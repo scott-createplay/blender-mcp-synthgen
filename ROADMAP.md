@@ -6,7 +6,7 @@ From grounded design spike → iterable product. Each phase is independently use
 |---|---|---|
 | **0. Scaffold** | repo structure, README, this roadmap, existing artifacts homed, `git init` | ✅ done |
 | **1. Package the spike** | extractors + `schema.query` as clean lib+CLI, `pyproject`, first tests | 🟡 ~80% (extractors + query in; more tests wanted) |
-| **2. Scene-graph walker** | `neighbors()`/`resolve()` protocol + tier-① generators (pointer walks), snapshot backend + fixture tests, then live bpy backend + tier-② (cook-then-read) | ⬜ designed ([`knowledge/scene_graph_contexts.md`](knowledge/scene_graph_contexts.md)) |
+| **2. Scene-graph walker** | protocol + traversal + snapshot backend + fixture tests ✅; tier-① live bpy generators ✅ (untested under real bpy); **remaining:** validate bpy backend headless + implement tier-② `attr_bridge` (cook-then-read) | 🟡 in progress |
 | **3. MCP layer** | thin composable server exposing read-only tools (schema query, graph walk, `impact_set`); wire into Cursor + Claude Code | ⬜ gated on the MCP-wiring + security decision |
 | **4. Knowledge → skill/rules** | `skill/SKILL.md` + `.cursor/rules`; the build→verify loop protocol | 🟡 docs exist, packaging pending |
 | **5. Mutation** | graph-diff apply (add node / rewire / retarget) — never destructive scene ops | ⬜ |
