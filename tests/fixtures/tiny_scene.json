@@ -1,0 +1,28 @@
+{
+  "_comment": "Minimal but real: a willow object with a GN modifier that stores 'bark_age' on the INSTANCE domain, and a Bark material whose shader Attribute node (INSTANCER) reads it. Edge direction = dependency (src depends on / references dst).",
+  "nodes": [
+    { "id": "COL:Scene", "kind": "collection" },
+    { "id": "OBJ:Willow", "kind": "object" },
+    { "id": "OBJ:Ground", "kind": "object" },
+    { "id": "OBJ:Willow/MOD:GeometryNodes", "kind": "modifier", "data": { "type": "NODES" } },
+    { "id": "NG:WillowGrowth", "kind": "nodetree_def" },
+    { "id": "NG:WillowGrowth/NODE:StoreNamedAttribute", "kind": "gn_node",
+      "data": { "node_type": "GeometryNodeStoreNamedAttribute", "attr": "bark_age", "domain": "INSTANCE" } },
+    { "id": "MAT:Bark", "kind": "material" },
+    { "id": "MAT:Bark/NODE:Attribute", "kind": "shader_node",
+      "data": { "node_type": "ShaderNodeAttribute", "attribute_name": "bark_age", "attribute_type": "INSTANCER" } }
+  ],
+  "edges": [
+    { "src": "COL:Scene", "dst": "OBJ:Willow", "type": "collection_contains" },
+    { "src": "COL:Scene", "dst": "OBJ:Ground", "type": "collection_contains" },
+    { "src": "OBJ:Willow", "dst": "OBJ:Ground", "type": "parent" },
+    { "src": "OBJ:Willow", "dst": "OBJ:Willow/MOD:GeometryNodes", "type": "has_modifier" },
+    { "src": "OBJ:Willow/MOD:GeometryNodes", "dst": "NG:WillowGrowth", "type": "modifier_uses_tree" },
+    { "src": "NG:WillowGrowth", "dst": "NG:WillowGrowth/NODE:StoreNamedAttribute", "type": "tree_contains_node" },
+    { "src": "OBJ:Willow", "dst": "MAT:Bark", "type": "uses_material" },
+    { "src": "MAT:Bark", "dst": "MAT:Bark/NODE:Attribute", "type": "tree_contains_node" },
+    { "src": "MAT:Bark/NODE:Attribute", "dst": "NG:WillowGrowth/NODE:StoreNamedAttribute",
+      "type": "attr_bridge", "tier": 2, "state_dependent": true, "resolved": true,
+      "data": { "attr": "bark_age", "domain": "INSTANCE" } }
+  ]
+}

@@ -43,22 +43,25 @@ def path(graph, src: str, dst: str, edge_types: Optional[set] = None) -> Optiona
     return None
 
 
-def build_reverse_index(graph, node_ids: Optional[Iterable[str]] = None) -> dict:
+def build_reverse_index(graph, node_ids: Optional[Iterable[str]] = None,
+                        edge_types: Optional[set] = None) -> dict:
     """Materialize dst -> [Edge] by scanning forward edges. Needs enumerable nodes()."""
     rev: dict = {}
     ids = node_ids if node_ids is not None else list(graph.nodes())
     for nid in ids:
-        for e in graph.neighbors(nid):
+        for e in graph.neighbors(nid, edge_types):
             rev.setdefault(e.dst, []).append(e)
     return rev
 
 
-def impact_set(graph, target: str, node_ids: Optional[Iterable[str]] = None) -> set:
+def impact_set(graph, target: str, node_ids: Optional[Iterable[str]] = None,
+               edge_types: Optional[set] = None) -> set:
     """Everything whose value could change if `target` changes (reverse reachability).
 
-    "If I change this node, what breaks?" — the core refactor-safety query.
+    "If I change this node, what breaks?" — the core refactor-safety query. Scope with
+    `edge_types` to follow dataflow (attr_bridge/node_link/drives) rather than containment.
     """
-    rev = build_reverse_index(graph, node_ids)
+    rev = build_reverse_index(graph, node_ids, edge_types)
     seen, q = {target}, deque([target])
     while q:
         cur = q.popleft()
