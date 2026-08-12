@@ -1,0 +1,6498 @@
+{
+  "extractor_version": "v4-tritree",
+  "tree_type": "CompositorNodeTree",
+  "blender_version": "5.2.0 LTS",
+  "blender_version_tuple": [
+    5,
+    2,
+    0
+  ],
+  "node_count": 168,
+  "skipped_count": 3,
+  "nodes": {
+    "CompositorNodeAlphaOver": {
+      "label": "Alpha Over",
+      "inputs": [
+        {
+          "name": "Background",
+          "identifier": "Background",
+          "type": "RGBA"
+        },
+        {
+          "name": "Foreground",
+          "identifier": "Foreground",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Straight Alpha",
+          "identifier": "Straight Alpha",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeAntiAliasing": {
+      "label": "Anti-Aliasing",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Threshold",
+          "identifier": "Threshold",
+          "type": "VALUE"
+        },
+        {
+          "name": "Contrast Limit",
+          "identifier": "Contrast Limit",
+          "type": "VALUE"
+        },
+        {
+          "name": "Corner Rounding",
+          "identifier": "Corner Rounding",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeBilateralblur": {
+      "label": "Bilateral Blur",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Determinator",
+          "identifier": "Determinator",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "INT"
+        },
+        {
+          "name": "Threshold",
+          "identifier": "Threshold",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeBlankImage": {
+      "label": "Blank Image",
+      "inputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "INT_VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeBlur": {
+      "label": "Blur",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Extend Bounds",
+          "identifier": "Extend Bounds",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Separable",
+          "identifier": "Separable",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeBokehBlur": {
+      "label": "Bokeh Blur",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Bokeh",
+          "identifier": "Bokeh",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "VALUE"
+        },
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        },
+        {
+          "name": "Extend Bounds",
+          "identifier": "Extend Bounds",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeBokehImage": {
+      "label": "Bokeh Image",
+      "inputs": [
+        {
+          "name": "Flaps",
+          "identifier": "Flaps",
+          "type": "INT"
+        },
+        {
+          "name": "Angle",
+          "identifier": "Angle",
+          "type": "VALUE"
+        },
+        {
+          "name": "Roundness",
+          "identifier": "Roundness",
+          "type": "VALUE"
+        },
+        {
+          "name": "Catadioptric Size",
+          "identifier": "Catadioptric Size",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color Shift",
+          "identifier": "Color Shift",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeBoxMask": {
+      "label": "Box Mask",
+      "inputs": [
+        {
+          "name": "Operation",
+          "identifier": "Operation",
+          "type": "MENU"
+        },
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Position",
+          "identifier": "Position",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeBrightContrast": {
+      "label": "Brightness/Contrast",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Brightness",
+          "identifier": "Bright",
+          "type": "VALUE"
+        },
+        {
+          "name": "Contrast",
+          "identifier": "Contrast",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeChannelMatte": {
+      "label": "Channel Key",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Minimum",
+          "identifier": "Minimum",
+          "type": "VALUE"
+        },
+        {
+          "name": "Maximum",
+          "identifier": "Maximum",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color Space",
+          "identifier": "Color Space",
+          "type": "MENU"
+        },
+        {
+          "name": "RGB Key Channel",
+          "identifier": "RGB Key Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "HSV Key Channel",
+          "identifier": "HSV Key Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "YUV Key Channel",
+          "identifier": "YUV Key Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "YCbCr Key Channel",
+          "identifier": "YCbCr Key Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "Limit Method",
+          "identifier": "Limit Method",
+          "type": "MENU"
+        },
+        {
+          "name": "RGB Limit Channel",
+          "identifier": "RGB Limit Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "HSV Limit Channel",
+          "identifier": "HSV Limit Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "YUV Limit Channel",
+          "identifier": "YUV Limit Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "YCbCr Limit Channel",
+          "identifier": "YCbCr Limit Channel",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeChromaMatte": {
+      "label": "Chroma Key",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Key Color",
+          "identifier": "Key Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Minimum",
+          "identifier": "Minimum",
+          "type": "VALUE"
+        },
+        {
+          "name": "Maximum",
+          "identifier": "Maximum",
+          "type": "VALUE"
+        },
+        {
+          "name": "Falloff",
+          "identifier": "Falloff",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeColorBalance": {
+      "label": "Color Balance",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Lift",
+          "identifier": "Base Lift",
+          "type": "VALUE"
+        },
+        {
+          "name": "Lift",
+          "identifier": "Color Lift",
+          "type": "RGBA"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Base Gamma",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Color Gamma",
+          "type": "RGBA"
+        },
+        {
+          "name": "Gain",
+          "identifier": "Base Gain",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gain",
+          "identifier": "Color Gain",
+          "type": "RGBA"
+        },
+        {
+          "name": "Offset",
+          "identifier": "Base Offset",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset",
+          "identifier": "Color Offset",
+          "type": "RGBA"
+        },
+        {
+          "name": "Power",
+          "identifier": "Base Power",
+          "type": "VALUE"
+        },
+        {
+          "name": "Power",
+          "identifier": "Color Power",
+          "type": "RGBA"
+        },
+        {
+          "name": "Slope",
+          "identifier": "Base Slope",
+          "type": "VALUE"
+        },
+        {
+          "name": "Slope",
+          "identifier": "Color Slope",
+          "type": "RGBA"
+        },
+        {
+          "name": "Temperature",
+          "identifier": "Input Temperature",
+          "type": "VALUE"
+        },
+        {
+          "name": "Tint",
+          "identifier": "Input Tint",
+          "type": "VALUE"
+        },
+        {
+          "name": "Temperature",
+          "identifier": "Output Temperature",
+          "type": "VALUE"
+        },
+        {
+          "name": "Tint",
+          "identifier": "Output Tint",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeColorCorrection": {
+      "label": "Color Correction",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        },
+        {
+          "name": "Saturation",
+          "identifier": "Master Saturation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Contrast",
+          "identifier": "Master Contrast",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Master Gamma",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gain",
+          "identifier": "Master Gain",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset",
+          "identifier": "Master Offset",
+          "type": "VALUE"
+        },
+        {
+          "name": "Saturation",
+          "identifier": "Highlights Saturation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Contrast",
+          "identifier": "Highlights Contrast",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Highlights Gamma",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gain",
+          "identifier": "Highlights Gain",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset",
+          "identifier": "Highlights Offset",
+          "type": "VALUE"
+        },
+        {
+          "name": "Saturation",
+          "identifier": "Midtones Saturation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Contrast",
+          "identifier": "Midtones Contrast",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Midtones Gamma",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gain",
+          "identifier": "Midtones Gain",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset",
+          "identifier": "Midtones Offset",
+          "type": "VALUE"
+        },
+        {
+          "name": "Saturation",
+          "identifier": "Shadows Saturation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Contrast",
+          "identifier": "Shadows Contrast",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Shadows Gamma",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gain",
+          "identifier": "Shadows Gain",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset",
+          "identifier": "Shadows Offset",
+          "type": "VALUE"
+        },
+        {
+          "name": "Midtones Start",
+          "identifier": "Midtones Start",
+          "type": "VALUE"
+        },
+        {
+          "name": "Midtones End",
+          "identifier": "Midtones End",
+          "type": "VALUE"
+        },
+        {
+          "name": "Red",
+          "identifier": "Apply On Red",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Green",
+          "identifier": "Apply On Green",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Blue",
+          "identifier": "Apply On Blue",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeColorMatte": {
+      "label": "Color Key",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Key Color",
+          "identifier": "Key Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Hue",
+          "identifier": "Hue",
+          "type": "VALUE"
+        },
+        {
+          "name": "Saturation",
+          "identifier": "Saturation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeColorSpill": {
+      "label": "Color Spill",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Spill Channel",
+          "identifier": "Spill Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "Limit Method",
+          "identifier": "Limit Method",
+          "type": "MENU"
+        },
+        {
+          "name": "Limit Channel",
+          "identifier": "Limit Channel",
+          "type": "MENU"
+        },
+        {
+          "name": "Limit Strength",
+          "identifier": "Limit Strength",
+          "type": "VALUE"
+        },
+        {
+          "name": "Use Spill Strength",
+          "identifier": "Use Spill Strength",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Strength",
+          "identifier": "Spill Strength",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeCombineColor": {
+      "label": "Combine Color",
+      "inputs": [
+        {
+          "name": "Red",
+          "identifier": "Red",
+          "type": "VALUE"
+        },
+        {
+          "name": "Green",
+          "identifier": "Green",
+          "type": "VALUE"
+        },
+        {
+          "name": "Blue",
+          "identifier": "Blue",
+          "type": "VALUE"
+        },
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "mode",
+          "default": "RGB",
+          "values": [
+            "RGB",
+            "HSV",
+            "HSL",
+            "YCC",
+            "YUV"
+          ]
+        },
+        {
+          "name": "ycc_mode",
+          "default": "ITUBT709",
+          "values": [
+            "ITUBT601",
+            "ITUBT709",
+            "JFIF"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeConvertColorSpace": {
+      "label": "Convert Colorspace",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "from_color_space",
+          "default": "scene_linear",
+          "values": [
+            "ACES 1.3 sRGB",
+            "ACES 2.0 sRGB",
+            "ACES2065-1",
+            "ACEScc",
+            "ACEScct",
+            "ACEScg",
+            "ADX10",
+            "ADX16",
+            "ARRI LogC3 (EI800)",
+            "ARRI LogC4",
+            "AgX Base sRGB",
+            "AgX Log",
+            "Apple Log",
+            "Apple Log 2",
+            "BMDFilm WideGamut Gen5",
+            "CanonLog2 CinemaGamut D55",
+            "CanonLog3 CinemaGamut D55",
+            "D-Log D-Gamut",
+            "DaVinci Intermediate WideGamut",
+            "Display P3",
+            "Filmic Log",
+            "Filmic sRGB",
+            "Gamma 1.8 Encoded Rec.709",
+            "Gamma 2.2 Encoded AP1",
+            "Gamma 2.2 Encoded AdobeRGB",
+            "Gamma 2.2 Encoded Rec.709",
+            "Gamma 2.4 Encoded Rec.709",
+            "Khronos PBR Neutral sRGB",
+            "Linear ARRI Wide Gamut 3",
+            "Linear ARRI Wide Gamut 4",
+            "Linear Adobe RGB",
+            "Linear Apple Wide Gamut",
+            "Linear BMD WideGamut Gen5",
+            "Linear CIE-XYZ D65",
+            "Linear CIE-XYZ E",
+            "Linear CinemaGamut D55",
+            "Linear D-Gamut",
+            "Linear DCI-P3 D65",
+            "Linear DaVinci WideGamut",
+            "Linear FilmLight E-Gamut",
+            "Linear REDWideGamutRGB",
+            "Linear Rec.2020",
+            "Linear Rec.709",
+            "Linear S-Gamut3",
+            "Linear S-Gamut3.Cine",
+            "Linear V-Gamut",
+            "Linear Venice S-Gamut3",
+            "Linear Venice S-Gamut3.Cine",
+            "Log3G10 REDWideGamutRGB",
+            "Non-Color",
+            "Rec.1886",
+            "Rec.2020",
+            "Rec.2100-HLG",
+            "Rec.2100-PQ",
+            "S-Log3 S-Gamut3",
+            "S-Log3 S-Gamut3.Cine",
+            "S-Log3 Venice S-Gamut3",
+            "S-Log3 Venice S-Gamut3.Cine",
+            "V-Log V-Gamut",
+            "sRGB",
+            "sRGB Encoded AP1",
+            "sRGB Encoded P3-D65",
+            "scene_linear"
+          ]
+        },
+        {
+          "name": "to_color_space",
+          "default": "scene_linear",
+          "values": [
+            "ACES 1.3 sRGB",
+            "ACES 2.0 sRGB",
+            "ACES2065-1",
+            "ACEScc",
+            "ACEScct",
+            "ACEScg",
+            "ADX10",
+            "ADX16",
+            "ARRI LogC3 (EI800)",
+            "ARRI LogC4",
+            "AgX Base sRGB",
+            "AgX Log",
+            "Apple Log",
+            "Apple Log 2",
+            "BMDFilm WideGamut Gen5",
+            "CanonLog2 CinemaGamut D55",
+            "CanonLog3 CinemaGamut D55",
+            "D-Log D-Gamut",
+            "DaVinci Intermediate WideGamut",
+            "Display P3",
+            "Filmic Log",
+            "Filmic sRGB",
+            "Gamma 1.8 Encoded Rec.709",
+            "Gamma 2.2 Encoded AP1",
+            "Gamma 2.2 Encoded AdobeRGB",
+            "Gamma 2.2 Encoded Rec.709",
+            "Gamma 2.4 Encoded Rec.709",
+            "Khronos PBR Neutral sRGB",
+            "Linear ARRI Wide Gamut 3",
+            "Linear ARRI Wide Gamut 4",
+            "Linear Adobe RGB",
+            "Linear Apple Wide Gamut",
+            "Linear BMD WideGamut Gen5",
+            "Linear CIE-XYZ D65",
+            "Linear CIE-XYZ E",
+            "Linear CinemaGamut D55",
+            "Linear D-Gamut",
+            "Linear DCI-P3 D65",
+            "Linear DaVinci WideGamut",
+            "Linear FilmLight E-Gamut",
+            "Linear REDWideGamutRGB",
+            "Linear Rec.2020",
+            "Linear Rec.709",
+            "Linear S-Gamut3",
+            "Linear S-Gamut3.Cine",
+            "Linear V-Gamut",
+            "Linear Venice S-Gamut3",
+            "Linear Venice S-Gamut3.Cine",
+            "Log3G10 REDWideGamutRGB",
+            "Non-Color",
+            "Rec.1886",
+            "Rec.2020",
+            "Rec.2100-HLG",
+            "Rec.2100-PQ",
+            "S-Log3 S-Gamut3",
+            "S-Log3 S-Gamut3.Cine",
+            "S-Log3 Venice S-Gamut3",
+            "S-Log3 Venice S-Gamut3.Cine",
+            "V-Log V-Gamut",
+            "sRGB",
+            "sRGB Encoded AP1",
+            "sRGB Encoded P3-D65",
+            "scene_linear"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeConvertToDisplay": {
+      "label": "Convert to Display",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Invert",
+          "identifier": "Invert",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeConvolve": {
+      "label": "Convolve",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Kernel Data Type",
+          "identifier": "Kernel Data Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Kernel",
+          "identifier": "Float Kernel",
+          "type": "VALUE"
+        },
+        {
+          "name": "Kernel",
+          "identifier": "Color Kernel",
+          "type": "RGBA"
+        },
+        {
+          "name": "Normalize Kernel",
+          "identifier": "Normalize Kernel",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeCornerPin": {
+      "label": "Corner Pin",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Upper Left",
+          "identifier": "Upper Left",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Upper Right",
+          "identifier": "Upper Right",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Lower Left",
+          "identifier": "Lower Left",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Lower Right",
+          "identifier": "Lower Right",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Plane",
+          "identifier": "Plane",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeCrop": {
+      "label": "Crop",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "INT"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "INT"
+        },
+        {
+          "name": "Width",
+          "identifier": "Width",
+          "type": "INT"
+        },
+        {
+          "name": "Height",
+          "identifier": "Height",
+          "type": "INT"
+        },
+        {
+          "name": "Alpha Crop",
+          "identifier": "Alpha Crop",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeCryptomatte": {
+      "label": "Cryptomatte (Legacy)",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Crypto 00",
+          "identifier": "Crypto 00",
+          "type": "RGBA"
+        },
+        {
+          "name": "Crypto 01",
+          "identifier": "Crypto 01",
+          "type": "RGBA"
+        },
+        {
+          "name": "Crypto 02",
+          "identifier": "Crypto 02",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        },
+        {
+          "name": "Pick",
+          "identifier": "Pick",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeCryptomatteV2": {
+      "label": "Cryptomatte",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        },
+        {
+          "name": "Pick",
+          "identifier": "Pick",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "source",
+          "default": "RENDER",
+          "values": [
+            "RENDER",
+            "IMAGE"
+          ]
+        },
+        {
+          "name": "layer_name",
+          "default": "ViewLayer.CryptoObject",
+          "values": [
+            "CryptoObject",
+            "CryptoMaterial",
+            "CryptoAsset"
+          ]
+        },
+        {
+          "name": "layer",
+          "default": "",
+          "values": [
+            "PLACEHOLDER"
+          ]
+        },
+        {
+          "name": "view",
+          "default": "",
+          "values": [
+            "ALL"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeCurveRGB": {
+      "label": "RGB Curves",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Black Level",
+          "identifier": "Black Level",
+          "type": "RGBA"
+        },
+        {
+          "name": "White Level",
+          "identifier": "White Level",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDBlur": {
+      "label": "Directional Blur",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Samples",
+          "identifier": "Samples",
+          "type": "INT"
+        },
+        {
+          "name": "Center",
+          "identifier": "Center",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Amount",
+          "identifier": "Translation Amount",
+          "type": "VALUE"
+        },
+        {
+          "name": "Direction",
+          "identifier": "Translation Direction",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDefocus": {
+      "label": "Defocus",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Z",
+          "identifier": "Z",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "bokeh",
+          "default": "CIRCLE",
+          "values": [
+            "OCTAGON",
+            "HEPTAGON",
+            "HEXAGON",
+            "PENTAGON",
+            "SQUARE",
+            "TRIANGLE",
+            "CIRCLE"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeDenoise": {
+      "label": "Denoise",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Albedo",
+          "identifier": "Albedo",
+          "type": "RGBA"
+        },
+        {
+          "name": "Normal",
+          "identifier": "Normal",
+          "type": "VECTOR"
+        },
+        {
+          "name": "HDR",
+          "identifier": "HDR",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Prefilter",
+          "identifier": "Prefilter",
+          "type": "MENU"
+        },
+        {
+          "name": "Quality",
+          "identifier": "Quality",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDespeckle": {
+      "label": "Despeckle",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color Threshold",
+          "identifier": "Color Threshold",
+          "type": "VALUE"
+        },
+        {
+          "name": "Neighbor Threshold",
+          "identifier": "Neighbor Threshold",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDiffMatte": {
+      "label": "Difference Key",
+      "inputs": [
+        {
+          "name": "Image 1",
+          "identifier": "Image 1",
+          "type": "RGBA"
+        },
+        {
+          "name": "Image 2",
+          "identifier": "Image 2",
+          "type": "RGBA"
+        },
+        {
+          "name": "Tolerance",
+          "identifier": "Tolerance",
+          "type": "VALUE"
+        },
+        {
+          "name": "Falloff",
+          "identifier": "Falloff",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDilateErode": {
+      "label": "Dilate/Erode",
+      "inputs": [
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "INT"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Falloff Size",
+          "identifier": "Falloff Size",
+          "type": "VALUE"
+        },
+        {
+          "name": "Falloff",
+          "identifier": "Falloff",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDisplace": {
+      "label": "Displace",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Displacement",
+          "identifier": "Displacement",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDistanceMatte": {
+      "label": "Distance Key",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Key Color",
+          "identifier": "Key Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Color Space",
+          "identifier": "Color Space",
+          "type": "MENU"
+        },
+        {
+          "name": "Tolerance",
+          "identifier": "Tolerance",
+          "type": "VALUE"
+        },
+        {
+          "name": "Falloff",
+          "identifier": "Falloff",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeDoubleEdgeMask": {
+      "label": "Double Edge Mask",
+      "inputs": [
+        {
+          "name": "Outer Mask",
+          "identifier": "Outer Mask",
+          "type": "VALUE"
+        },
+        {
+          "name": "Inner Mask",
+          "identifier": "Inner Mask",
+          "type": "VALUE"
+        },
+        {
+          "name": "Image Edges",
+          "identifier": "Image Edges",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Only Inside Outer",
+          "identifier": "Only Inside Outer",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeEllipseMask": {
+      "label": "Ellipse Mask",
+      "inputs": [
+        {
+          "name": "Operation",
+          "identifier": "Operation",
+          "type": "MENU"
+        },
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Position",
+          "identifier": "Position",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeExposure": {
+      "label": "Exposure",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Exposure",
+          "identifier": "Exposure",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeFilter": {
+      "label": "Filter",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeFlip": {
+      "label": "Flip",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Flip X",
+          "identifier": "Flip X",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Flip Y",
+          "identifier": "Flip Y",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeGlare": {
+      "label": "Glare",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Quality",
+          "identifier": "Quality",
+          "type": "MENU"
+        },
+        {
+          "name": "Threshold",
+          "identifier": "Highlights Threshold",
+          "type": "VALUE"
+        },
+        {
+          "name": "Smoothness",
+          "identifier": "Highlights Smoothness",
+          "type": "VALUE"
+        },
+        {
+          "name": "Clamp",
+          "identifier": "Clamp Highlights",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Maximum",
+          "identifier": "Maximum Highlights",
+          "type": "VALUE"
+        },
+        {
+          "name": "Strength",
+          "identifier": "Strength",
+          "type": "VALUE"
+        },
+        {
+          "name": "Saturation",
+          "identifier": "Saturation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Tint",
+          "identifier": "Tint",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "VALUE"
+        },
+        {
+          "name": "Streaks",
+          "identifier": "Streaks",
+          "type": "INT"
+        },
+        {
+          "name": "Streaks Angle",
+          "identifier": "Streaks Angle",
+          "type": "VALUE"
+        },
+        {
+          "name": "Iterations",
+          "identifier": "Iterations",
+          "type": "INT"
+        },
+        {
+          "name": "Fade",
+          "identifier": "Fade",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color Modulation",
+          "identifier": "Color Modulation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Diagonal",
+          "identifier": "Diagonal Star",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Sun Position",
+          "identifier": "Sun Position",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Jitter",
+          "identifier": "Jitter",
+          "type": "VALUE"
+        },
+        {
+          "name": "Kernel Data Type",
+          "identifier": "Kernel Data Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Kernel",
+          "identifier": "Float Kernel",
+          "type": "VALUE"
+        },
+        {
+          "name": "Kernel",
+          "identifier": "Color Kernel",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Glare",
+          "identifier": "Glare",
+          "type": "RGBA"
+        },
+        {
+          "name": "Highlights",
+          "identifier": "Highlights",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeGroup": {
+      "label": "Group",
+      "inputs": [],
+      "outputs": [],
+      "settings": []
+    },
+    "CompositorNodeHueCorrect": {
+      "label": "Hue Correct",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeHueSat": {
+      "label": "Hue/Saturation/Value",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Hue",
+          "identifier": "Hue",
+          "type": "VALUE"
+        },
+        {
+          "name": "Saturation",
+          "identifier": "Saturation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeIDMask": {
+      "label": "ID Mask",
+      "inputs": [
+        {
+          "name": "ID value",
+          "identifier": "ID value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Index",
+          "identifier": "Index",
+          "type": "INT"
+        },
+        {
+          "name": "Anti-Alias",
+          "identifier": "Anti-Alias",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeImage": {
+      "label": "Image",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "layer",
+          "default": "",
+          "values": [
+            "PLACEHOLDER"
+          ]
+        },
+        {
+          "name": "view",
+          "default": "",
+          "values": [
+            "ALL"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeImageCoordinates": {
+      "label": "Image Coordinates",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Uniform",
+          "identifier": "Uniform",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Normalized",
+          "identifier": "Normalized",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Pixel",
+          "identifier": "Pixel",
+          "type": "INT_VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeImageInfo": {
+      "label": "Image Info",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Dimensions",
+          "identifier": "Dimensions",
+          "type": "INT_VECTOR"
+        },
+        {
+          "name": "Resolution",
+          "identifier": "Resolution",
+          "type": "INT_VECTOR"
+        },
+        {
+          "name": "Location",
+          "identifier": "Location",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeInpaint": {
+      "label": "Inpaint",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeInvert": {
+      "label": "Invert Color",
+      "inputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Invert Color",
+          "identifier": "Invert Color",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Invert Alpha",
+          "identifier": "Invert Alpha",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeKeying": {
+      "label": "Keying",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Key Color",
+          "identifier": "Key Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Blur Size",
+          "identifier": "Preprocess Blur Size",
+          "type": "INT"
+        },
+        {
+          "name": "Balance",
+          "identifier": "Key Balance",
+          "type": "VALUE"
+        },
+        {
+          "name": "Black Level",
+          "identifier": "Black Level",
+          "type": "VALUE"
+        },
+        {
+          "name": "White Level",
+          "identifier": "White Level",
+          "type": "VALUE"
+        },
+        {
+          "name": "Size",
+          "identifier": "Edge Search Size",
+          "type": "INT"
+        },
+        {
+          "name": "Tolerance",
+          "identifier": "Edge Tolerance",
+          "type": "VALUE"
+        },
+        {
+          "name": "Garbage Matte",
+          "identifier": "Garbage Matte",
+          "type": "VALUE"
+        },
+        {
+          "name": "Core Matte",
+          "identifier": "Core Matte",
+          "type": "VALUE"
+        },
+        {
+          "name": "Blur Size",
+          "identifier": "Postprocess Blur Size",
+          "type": "INT"
+        },
+        {
+          "name": "Dilate Size",
+          "identifier": "Postprocess Dilate Size",
+          "type": "INT"
+        },
+        {
+          "name": "Feather Size",
+          "identifier": "Postprocess Feather Size",
+          "type": "INT"
+        },
+        {
+          "name": "Feather Falloff",
+          "identifier": "Feather Falloff",
+          "type": "MENU"
+        },
+        {
+          "name": "Strength",
+          "identifier": "Despill Strength",
+          "type": "VALUE"
+        },
+        {
+          "name": "Balance",
+          "identifier": "Despill Balance",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        },
+        {
+          "name": "Edges",
+          "identifier": "Edges",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeKeyingScreen": {
+      "label": "Keying Screen",
+      "inputs": [
+        {
+          "name": "Smoothness",
+          "identifier": "Smoothness",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Screen",
+          "identifier": "Screen",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeKuwahara": {
+      "label": "Kuwahara",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "VALUE"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Uniformity",
+          "identifier": "Uniformity",
+          "type": "INT"
+        },
+        {
+          "name": "Sharpness",
+          "identifier": "Sharpness",
+          "type": "VALUE"
+        },
+        {
+          "name": "Eccentricity",
+          "identifier": "Eccentricity",
+          "type": "VALUE"
+        },
+        {
+          "name": "High Precision",
+          "identifier": "High Precision",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeLensdist": {
+      "label": "Lens Distortion",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Distortion",
+          "identifier": "Distortion",
+          "type": "VALUE"
+        },
+        {
+          "name": "Dispersion",
+          "identifier": "Dispersion",
+          "type": "VALUE"
+        },
+        {
+          "name": "Jitter",
+          "identifier": "Jitter",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Fit",
+          "identifier": "Fit",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeLevels": {
+      "label": "Levels",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Channel",
+          "identifier": "Channel",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Mean",
+          "identifier": "Mean",
+          "type": "VALUE"
+        },
+        {
+          "name": "Standard Deviation",
+          "identifier": "Standard Deviation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Minimum",
+          "identifier": "Minimum",
+          "type": "VALUE"
+        },
+        {
+          "name": "Maximum",
+          "identifier": "Maximum",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeLumaMatte": {
+      "label": "Luminance Key",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Minimum",
+          "identifier": "Minimum",
+          "type": "VALUE"
+        },
+        {
+          "name": "Maximum",
+          "identifier": "Maximum",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Matte",
+          "identifier": "Matte",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeMapUV": {
+      "label": "Map UV",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "UV",
+          "identifier": "UV",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeMask": {
+      "label": "Mask",
+      "inputs": [
+        {
+          "name": "Size Source",
+          "identifier": "Size Source",
+          "type": "MENU"
+        },
+        {
+          "name": "Size X",
+          "identifier": "Size X",
+          "type": "INT"
+        },
+        {
+          "name": "Size Y",
+          "identifier": "Size Y",
+          "type": "INT"
+        },
+        {
+          "name": "Feather",
+          "identifier": "Feather",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Motion Blur",
+          "identifier": "Motion Blur",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Samples",
+          "identifier": "Motion Blur Samples",
+          "type": "INT"
+        },
+        {
+          "name": "Shutter",
+          "identifier": "Motion Blur Shutter",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeMaskToSDF": {
+      "label": "Mask To SDF",
+      "inputs": [
+        {
+          "name": "Mask",
+          "identifier": "Mask",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SDF",
+          "identifier": "SDF",
+          "type": "VALUE"
+        },
+        {
+          "name": "Nearest Pixel",
+          "identifier": "Nearest Pixel",
+          "type": "INT_VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeMovieClip": {
+      "label": "Movie Clip",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset X",
+          "identifier": "Offset X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset Y",
+          "identifier": "Offset Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Angle",
+          "identifier": "Angle",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeMovieDistortion": {
+      "label": "Movie Distortion",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeNormal": {
+      "label": "Normal",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Normal",
+          "identifier": "Normal",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeNormalize": {
+      "label": "Normalize",
+      "inputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeOutputFile": {
+      "label": "File Output",
+      "inputs": [
+        {
+          "name": "",
+          "identifier": "__extend__",
+          "type": "CUSTOM"
+        }
+      ],
+      "outputs": [],
+      "settings": []
+    },
+    "CompositorNodePixelate": {
+      "label": "Pixelate",
+      "inputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodePlaneTrackDeform": {
+      "label": "Plane Track Deform",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Motion Blur",
+          "identifier": "Motion Blur",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Samples",
+          "identifier": "Motion Blur Samples",
+          "type": "INT"
+        },
+        {
+          "name": "Shutter",
+          "identifier": "Motion Blur Shutter",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Plane",
+          "identifier": "Plane",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodePosterize": {
+      "label": "Posterize",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Steps",
+          "identifier": "Steps",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodePremulKey": {
+      "label": "Alpha Convert",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeRGB": {
+      "label": "Color",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeRGBToBW": {
+      "label": "RGB to BW",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Val",
+          "identifier": "Val",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeRLayers": {
+      "label": "Render Layers",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "layer",
+          "default": "ViewLayer",
+          "values": [
+            "PLACEHOLDER"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeRelativeToPixel": {
+      "label": "Relative To Pixel",
+      "inputs": [
+        {
+          "name": "Value",
+          "identifier": "Vector Value",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Value",
+          "identifier": "Float Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Float Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Vector Value",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "FLOAT",
+          "values": [
+            "FLOAT",
+            "VECTOR"
+          ]
+        },
+        {
+          "name": "reference_dimension",
+          "default": "X",
+          "values": [
+            "PER_DIMENSION",
+            "X",
+            "Y",
+            "Greater",
+            "Smaller",
+            "Diagonal"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeRotate": {
+      "label": "Rotate",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Angle",
+          "identifier": "Angle",
+          "type": "VALUE"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeScale": {
+      "label": "Scale",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Frame Type",
+          "identifier": "Frame Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeSceneTime": {
+      "label": "Scene Time",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Seconds",
+          "identifier": "Seconds",
+          "type": "VALUE"
+        },
+        {
+          "name": "Frame",
+          "identifier": "Frame",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeSeparateColor": {
+      "label": "Separate Color",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Red",
+          "identifier": "Red",
+          "type": "VALUE"
+        },
+        {
+          "name": "Green",
+          "identifier": "Green",
+          "type": "VALUE"
+        },
+        {
+          "name": "Blue",
+          "identifier": "Blue",
+          "type": "VALUE"
+        },
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "mode",
+          "default": "RGB",
+          "values": [
+            "RGB",
+            "HSV",
+            "HSL",
+            "YCC",
+            "YUV"
+          ]
+        },
+        {
+          "name": "ycc_mode",
+          "default": "ITUBT709",
+          "values": [
+            "ITUBT601",
+            "ITUBT709",
+            "JFIF"
+          ]
+        }
+      ]
+    },
+    "CompositorNodeSequencerStripInfo": {
+      "label": "Sequencer Strip Info",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Start Frame",
+          "identifier": "Start Frame",
+          "type": "INT"
+        },
+        {
+          "name": "End Frame",
+          "identifier": "End Frame",
+          "type": "INT"
+        },
+        {
+          "name": "Location",
+          "identifier": "Location",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeSetAlpha": {
+      "label": "Set Alpha",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeSplit": {
+      "label": "Split",
+      "inputs": [
+        {
+          "name": "Position",
+          "identifier": "Position",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Image",
+          "identifier": "Image_001",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeStabilize": {
+      "label": "Stabilize 2D",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Frame",
+          "identifier": "Frame",
+          "type": "INT"
+        },
+        {
+          "name": "Invert",
+          "identifier": "Invert",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeStringToImage": {
+      "label": "String To Image",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Font",
+          "identifier": "Font",
+          "type": "FONT"
+        },
+        {
+          "name": "Size",
+          "identifier": "Size",
+          "type": "VALUE"
+        },
+        {
+          "name": "Horizontal Alignment",
+          "identifier": "Horizontal Alignment",
+          "type": "MENU"
+        },
+        {
+          "name": "Vertical Alignment",
+          "identifier": "Vertical Alignment",
+          "type": "MENU"
+        },
+        {
+          "name": "Wrap",
+          "identifier": "Wrap",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Width",
+          "identifier": "Wrap Width",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeSwitch": {
+      "label": "Switch",
+      "inputs": [
+        {
+          "name": "Switch",
+          "identifier": "Switch",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Off",
+          "identifier": "Off",
+          "type": "RGBA"
+        },
+        {
+          "name": "On",
+          "identifier": "On",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeSwitchView": {
+      "label": "Switch View",
+      "inputs": [
+        {
+          "name": "left",
+          "identifier": "left",
+          "type": "RGBA"
+        },
+        {
+          "name": "right",
+          "identifier": "right",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeTime": {
+      "label": "Time Curve",
+      "inputs": [
+        {
+          "name": "Start Frame",
+          "identifier": "Start Frame",
+          "type": "INT"
+        },
+        {
+          "name": "End Frame",
+          "identifier": "End Frame",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeTonemap": {
+      "label": "Tonemap",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Type",
+          "identifier": "Type",
+          "type": "MENU"
+        },
+        {
+          "name": "Key",
+          "identifier": "Key",
+          "type": "VALUE"
+        },
+        {
+          "name": "Balance",
+          "identifier": "Balance",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Gamma",
+          "type": "VALUE"
+        },
+        {
+          "name": "Intensity",
+          "identifier": "Intensity",
+          "type": "VALUE"
+        },
+        {
+          "name": "Contrast",
+          "identifier": "Contrast",
+          "type": "VALUE"
+        },
+        {
+          "name": "Light Adaptation",
+          "identifier": "Light Adaptation",
+          "type": "VALUE"
+        },
+        {
+          "name": "Chromatic Adaptation",
+          "identifier": "Chromatic Adaptation",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeTrackPos": {
+      "label": "Track Position",
+      "inputs": [
+        {
+          "name": "Mode",
+          "identifier": "Mode",
+          "type": "MENU"
+        },
+        {
+          "name": "Frame",
+          "identifier": "Frame",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Speed",
+          "identifier": "Speed",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeTransform": {
+      "label": "Transform",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Angle",
+          "identifier": "Angle",
+          "type": "VALUE"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeTranslate": {
+      "label": "Translate",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Interpolation",
+          "identifier": "Interpolation",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension X",
+          "identifier": "Extension X",
+          "type": "MENU"
+        },
+        {
+          "name": "Extension Y",
+          "identifier": "Extension Y",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeVecBlur": {
+      "label": "Vector Blur",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        },
+        {
+          "name": "Speed",
+          "identifier": "Speed",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Depth",
+          "identifier": "Z",
+          "type": "VALUE"
+        },
+        {
+          "name": "Samples",
+          "identifier": "Samples",
+          "type": "INT"
+        },
+        {
+          "name": "Shutter",
+          "identifier": "Shutter",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "CompositorNodeViewer": {
+      "label": "Viewer",
+      "inputs": [
+        {
+          "name": "Image",
+          "identifier": "Image",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [],
+      "settings": []
+    },
+    "CompositorNodeZcombine": {
+      "label": "Depth Combine",
+      "inputs": [
+        {
+          "name": "A",
+          "identifier": "A",
+          "type": "RGBA"
+        },
+        {
+          "name": "Depth A",
+          "identifier": "Depth A",
+          "type": "VALUE"
+        },
+        {
+          "name": "B",
+          "identifier": "B",
+          "type": "RGBA"
+        },
+        {
+          "name": "Depth B",
+          "identifier": "Depth B",
+          "type": "VALUE"
+        },
+        {
+          "name": "Use Alpha",
+          "identifier": "Use Alpha",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Anti-Alias",
+          "identifier": "Anti-Alias",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Result",
+          "identifier": "Result",
+          "type": "RGBA"
+        },
+        {
+          "name": "Depth",
+          "identifier": "Depth",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeAlignRotationToVector": {
+      "label": "Align Rotation to Vector",
+      "inputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Factor",
+          "type": "VALUE"
+        },
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": [
+        {
+          "name": "axis",
+          "default": "Z",
+          "values": [
+            "X",
+            "Y",
+            "Z"
+          ]
+        },
+        {
+          "name": "pivot_axis",
+          "default": "AUTO",
+          "values": [
+            "AUTO",
+            "X",
+            "Y",
+            "Z"
+          ]
+        }
+      ]
+    },
+    "FunctionNodeAxesToRotation": {
+      "label": "Axes to Rotation",
+      "inputs": [
+        {
+          "name": "Primary Axis",
+          "identifier": "Primary Axis",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Secondary Axis",
+          "identifier": "Secondary Axis",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": [
+        {
+          "name": "primary_axis",
+          "default": "Z",
+          "values": [
+            "X",
+            "Y",
+            "Z"
+          ]
+        },
+        {
+          "name": "secondary_axis",
+          "default": "X",
+          "values": [
+            "X",
+            "Y",
+            "Z"
+          ]
+        }
+      ]
+    },
+    "FunctionNodeAxisAngleToRotation": {
+      "label": "Axis Angle to Rotation",
+      "inputs": [
+        {
+          "name": "Axis",
+          "identifier": "Axis",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Angle",
+          "identifier": "Angle",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeCombineMatrix": {
+      "label": "Combine Matrix",
+      "inputs": [
+        {
+          "name": "Column 1 Row 1",
+          "identifier": "Column 1 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 1 Row 2",
+          "identifier": "Column 1 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 1 Row 3",
+          "identifier": "Column 1 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 1 Row 4",
+          "identifier": "Column 1 Row 4",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 1",
+          "identifier": "Column 2 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 2",
+          "identifier": "Column 2 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 3",
+          "identifier": "Column 2 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 4",
+          "identifier": "Column 2 Row 4",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 1",
+          "identifier": "Column 3 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 2",
+          "identifier": "Column 3 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 3",
+          "identifier": "Column 3 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 4",
+          "identifier": "Column 3 Row 4",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 1",
+          "identifier": "Column 4 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 2",
+          "identifier": "Column 4 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 3",
+          "identifier": "Column 4 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 4",
+          "identifier": "Column 4 Row 4",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeEulerToRotation": {
+      "label": "Euler to Rotation",
+      "inputs": [
+        {
+          "name": "Euler",
+          "identifier": "Euler",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeFindInString": {
+      "label": "Find in String",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Search",
+          "identifier": "Search",
+          "type": "STRING"
+        },
+        {
+          "name": "Mode",
+          "identifier": "Mode",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "First Found",
+          "identifier": "First Found",
+          "type": "INT"
+        },
+        {
+          "name": "Count",
+          "identifier": "Count",
+          "type": "INT"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeFormatString": {
+      "label": "Format String",
+      "inputs": [
+        {
+          "name": "Format",
+          "identifier": "Format",
+          "type": "STRING"
+        },
+        {
+          "name": "",
+          "identifier": "__extend__",
+          "type": "CUSTOM"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputBool": {
+      "label": "Boolean",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Boolean",
+          "identifier": "Boolean",
+          "type": "BOOLEAN"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputInt": {
+      "label": "Integer",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Integer",
+          "identifier": "Integer",
+          "type": "INT"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputIntVector": {
+      "label": "Integer Vector",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "INT_VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputMenu": {
+      "label": "Menu",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Menu",
+          "identifier": "Menu",
+          "type": "MENU"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputRotation": {
+      "label": "Rotation",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputSpecialCharacters": {
+      "label": "Special Characters",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Line Break",
+          "identifier": "Line Break",
+          "type": "STRING"
+        },
+        {
+          "name": "Tab",
+          "identifier": "Tab",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputString": {
+      "label": "String",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInputVector": {
+      "label": "Vector",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInvertMatrix": {
+      "label": "Invert Matrix",
+      "inputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        },
+        {
+          "name": "Invertible",
+          "identifier": "Invertible",
+          "type": "BOOLEAN"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeInvertRotation": {
+      "label": "Invert Rotation",
+      "inputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeMatchString": {
+      "label": "Match String",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Operation",
+          "identifier": "Operation",
+          "type": "MENU"
+        },
+        {
+          "name": "Key",
+          "identifier": "Key",
+          "type": "STRING"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Result",
+          "identifier": "Result",
+          "type": "BOOLEAN"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeMatrixDeterminant": {
+      "label": "Matrix Determinant",
+      "inputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Determinant",
+          "identifier": "Determinant",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeMatrixMultiply": {
+      "label": "Multiply Matrices",
+      "inputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        },
+        {
+          "name": "Matrix",
+          "identifier": "Matrix_001",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeProjectPoint": {
+      "label": "Project Point",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Transform",
+          "identifier": "Transform",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeQuaternionToRotation": {
+      "label": "Quaternion to Rotation",
+      "inputs": [
+        {
+          "name": "W",
+          "identifier": "W",
+          "type": "VALUE"
+        },
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Z",
+          "identifier": "Z",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeReplaceString": {
+      "label": "Replace String",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Find",
+          "identifier": "Find",
+          "type": "STRING"
+        },
+        {
+          "name": "Replace",
+          "identifier": "Replace",
+          "type": "STRING"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeReverseString": {
+      "label": "Reverse String",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeRotateRotation": {
+      "label": "Rotate Rotation",
+      "inputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        },
+        {
+          "name": "Rotate By",
+          "identifier": "Rotate By",
+          "type": "ROTATION"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": [
+        {
+          "name": "rotation_space",
+          "default": "GLOBAL",
+          "values": [
+            "GLOBAL",
+            "LOCAL"
+          ]
+        }
+      ]
+    },
+    "FunctionNodeRotateVector": {
+      "label": "Rotate Vector",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeRotationToAxisAngle": {
+      "label": "Rotation to Axis Angle",
+      "inputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Axis",
+          "identifier": "Axis",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Angle",
+          "identifier": "Angle",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeRotationToEuler": {
+      "label": "Rotation to Euler",
+      "inputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Euler",
+          "identifier": "Euler",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeRotationToQuaternion": {
+      "label": "Rotation to Quaternion",
+      "inputs": [
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "W",
+          "identifier": "W",
+          "type": "VALUE"
+        },
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Z",
+          "identifier": "Z",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeSeparateMatrix": {
+      "label": "Separate Matrix",
+      "inputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Column 1 Row 1",
+          "identifier": "Column 1 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 1 Row 2",
+          "identifier": "Column 1 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 1 Row 3",
+          "identifier": "Column 1 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 1 Row 4",
+          "identifier": "Column 1 Row 4",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 1",
+          "identifier": "Column 2 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 2",
+          "identifier": "Column 2 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 3",
+          "identifier": "Column 2 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 2 Row 4",
+          "identifier": "Column 2 Row 4",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 1",
+          "identifier": "Column 3 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 2",
+          "identifier": "Column 3 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 3",
+          "identifier": "Column 3 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 3 Row 4",
+          "identifier": "Column 3 Row 4",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 1",
+          "identifier": "Column 4 Row 1",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 2",
+          "identifier": "Column 4 Row 2",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 3",
+          "identifier": "Column 4 Row 3",
+          "type": "VALUE"
+        },
+        {
+          "name": "Column 4 Row 4",
+          "identifier": "Column 4 Row 4",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeSetStringCase": {
+      "label": "Set String Case",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Case",
+          "identifier": "Case",
+          "type": "MENU"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeSliceString": {
+      "label": "Slice String",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Position",
+          "identifier": "Position",
+          "type": "INT"
+        },
+        {
+          "name": "Length",
+          "identifier": "Length",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeStringLength": {
+      "label": "String Length",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Length",
+          "identifier": "Length",
+          "type": "INT"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeStringToValue": {
+      "label": "String to Value",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Base",
+          "identifier": "Base",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Length",
+          "identifier": "Length",
+          "type": "INT"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "FLOAT",
+          "values": [
+            "FLOAT",
+            "INT"
+          ]
+        }
+      ]
+    },
+    "FunctionNodeTransformDirection": {
+      "label": "Transform Direction",
+      "inputs": [
+        {
+          "name": "Direction",
+          "identifier": "Direction",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Transform",
+          "identifier": "Transform",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Direction",
+          "identifier": "Direction",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeTransformPoint": {
+      "label": "Transform Point",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Transform",
+          "identifier": "Transform",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeTransposeMatrix": {
+      "label": "Transpose Matrix",
+      "inputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Matrix",
+          "identifier": "Matrix",
+          "type": "MATRIX"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeTrimString": {
+      "label": "Trim String",
+      "inputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        },
+        {
+          "name": "Characters",
+          "identifier": "Characters",
+          "type": "STRING"
+        },
+        {
+          "name": "Whitespace",
+          "identifier": "Whitespace",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Start",
+          "identifier": "Start",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "End",
+          "identifier": "End",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": []
+    },
+    "FunctionNodeValueToString": {
+      "label": "Value to String",
+      "inputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Decimals",
+          "identifier": "Decimals",
+          "type": "INT"
+        },
+        {
+          "name": "Base",
+          "identifier": "Base",
+          "type": "INT"
+        },
+        {
+          "name": "Padding",
+          "identifier": "Padding",
+          "type": "INT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "String",
+          "identifier": "String",
+          "type": "STRING"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "FLOAT",
+          "values": [
+            "FLOAT",
+            "INT"
+          ]
+        }
+      ]
+    },
+    "GeometryNodeCameraInfo": {
+      "label": "Camera Info",
+      "inputs": [
+        {
+          "name": "Camera",
+          "identifier": "Camera",
+          "type": "OBJECT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Projection Matrix",
+          "identifier": "Projection Matrix",
+          "type": "MATRIX"
+        },
+        {
+          "name": "Focal Length",
+          "identifier": "Focal Length",
+          "type": "VALUE"
+        },
+        {
+          "name": "Sensor",
+          "identifier": "Sensor",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Shift",
+          "identifier": "Shift",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Clip Start",
+          "identifier": "Clip Start",
+          "type": "VALUE"
+        },
+        {
+          "name": "Clip End",
+          "identifier": "Clip End",
+          "type": "VALUE"
+        },
+        {
+          "name": "Focus Distance",
+          "identifier": "Focus Distance",
+          "type": "VALUE"
+        },
+        {
+          "name": "Is Orthographic",
+          "identifier": "Is Orthographic",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Orthographic Scale",
+          "identifier": "Orthographic Scale",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "GeometryNodeIndexSwitch": {
+      "label": "Index Switch",
+      "inputs": [
+        {
+          "name": "Index",
+          "identifier": "Index",
+          "type": "INT"
+        },
+        {
+          "name": "0",
+          "identifier": "Item_0",
+          "type": "RGBA"
+        },
+        {
+          "name": "1",
+          "identifier": "Item_1",
+          "type": "RGBA"
+        },
+        {
+          "name": "",
+          "identifier": "__extend__",
+          "type": "CUSTOM"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Output",
+          "identifier": "Output",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "RGBA",
+          "values": [
+            "FLOAT",
+            "INT",
+            "BOOLEAN",
+            "VECTOR",
+            "RGBA",
+            "ROTATION",
+            "MATRIX",
+            "STRING",
+            "MENU",
+            "SHADER",
+            "OBJECT",
+            "IMAGE",
+            "GEOMETRY",
+            "COLLECTION",
+            "TEXTURE",
+            "MATERIAL",
+            "BUNDLE",
+            "CLOSURE",
+            "FONT",
+            "SCENE",
+            "TEXT",
+            "MASK",
+            "SOUND",
+            "INT_VECTOR"
+          ]
+        }
+      ]
+    },
+    "GeometryNodeInputActiveCamera": {
+      "label": "Active Camera",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Active Camera",
+          "identifier": "Active Camera",
+          "type": "OBJECT"
+        }
+      ],
+      "settings": []
+    },
+    "GeometryNodeInputFont": {
+      "label": "Font",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Font",
+          "identifier": "Font",
+          "type": "FONT"
+        }
+      ],
+      "settings": []
+    },
+    "GeometryNodeInputObject": {
+      "label": "Object",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Object",
+          "identifier": "Object",
+          "type": "OBJECT"
+        }
+      ],
+      "settings": []
+    },
+    "GeometryNodeMenuSwitch": {
+      "label": "Menu Switch",
+      "inputs": [
+        {
+          "name": "Menu",
+          "identifier": "Menu",
+          "type": "MENU"
+        },
+        {
+          "name": "A",
+          "identifier": "Item_0",
+          "type": "RGBA"
+        },
+        {
+          "name": "B",
+          "identifier": "Item_1",
+          "type": "RGBA"
+        },
+        {
+          "name": "",
+          "identifier": "__extend__",
+          "type": "CUSTOM"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Output",
+          "identifier": "Output",
+          "type": "RGBA"
+        },
+        {
+          "name": "A",
+          "identifier": "Item_0",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "B",
+          "identifier": "Item_1",
+          "type": "BOOLEAN"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "RGBA",
+          "values": [
+            "FLOAT",
+            "INT",
+            "BOOLEAN",
+            "VECTOR",
+            "RGBA",
+            "ROTATION",
+            "MATRIX",
+            "STRING",
+            "MENU",
+            "SHADER",
+            "OBJECT",
+            "IMAGE",
+            "GEOMETRY",
+            "COLLECTION",
+            "TEXTURE",
+            "MATERIAL",
+            "BUNDLE",
+            "CLOSURE",
+            "FONT",
+            "SCENE",
+            "TEXT",
+            "MASK",
+            "SOUND",
+            "INT_VECTOR"
+          ]
+        }
+      ]
+    },
+    "GeometryNodeObjectInfo": {
+      "label": "Object Info",
+      "inputs": [
+        {
+          "name": "Object",
+          "identifier": "Object",
+          "type": "OBJECT"
+        },
+        {
+          "name": "As Instance",
+          "identifier": "As Instance",
+          "type": "BOOLEAN"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Transform",
+          "identifier": "Transform",
+          "type": "MATRIX"
+        },
+        {
+          "name": "Location",
+          "identifier": "Location",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "ROTATION"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Geometry",
+          "identifier": "Geometry",
+          "type": "GEOMETRY"
+        }
+      ],
+      "settings": [
+        {
+          "name": "transform_space",
+          "default": "ORIGINAL",
+          "values": [
+            "ORIGINAL",
+            "RELATIVE"
+          ]
+        }
+      ]
+    },
+    "GeometryNodeSwitch": {
+      "label": "Switch",
+      "inputs": [
+        {
+          "name": "Switch",
+          "identifier": "Switch",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "False",
+          "identifier": "False",
+          "type": "VALUE"
+        },
+        {
+          "name": "True",
+          "identifier": "True",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Output",
+          "identifier": "Output",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "input_type",
+          "default": "FLOAT",
+          "values": [
+            "FLOAT",
+            "INT",
+            "BOOLEAN",
+            "VECTOR",
+            "RGBA",
+            "ROTATION",
+            "MATRIX",
+            "STRING",
+            "MENU",
+            "SHADER",
+            "OBJECT",
+            "IMAGE",
+            "GEOMETRY",
+            "COLLECTION",
+            "TEXTURE",
+            "MATERIAL",
+            "BUNDLE",
+            "CLOSURE",
+            "FONT",
+            "SCENE",
+            "TEXT",
+            "MASK",
+            "SOUND",
+            "INT_VECTOR"
+          ]
+        }
+      ]
+    },
+    "GeometryNodeWarning": {
+      "label": "Warning",
+      "inputs": [
+        {
+          "name": "Show",
+          "identifier": "Show",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Message",
+          "identifier": "Message",
+          "type": "STRING"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Show",
+          "identifier": "Show",
+          "type": "BOOLEAN"
+        }
+      ],
+      "settings": [
+        {
+          "name": "warning_type",
+          "default": "ERROR",
+          "values": [
+            "ERROR",
+            "WARNING",
+            "INFO"
+          ]
+        }
+      ]
+    },
+    "NodeEnableOutput": {
+      "label": "Enable Output",
+      "inputs": [
+        {
+          "name": "Enable",
+          "identifier": "Enable",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "FLOAT",
+          "values": [
+            "FLOAT",
+            "INT",
+            "BOOLEAN",
+            "VECTOR",
+            "RGBA",
+            "ROTATION",
+            "MATRIX",
+            "STRING",
+            "MENU",
+            "SHADER",
+            "OBJECT",
+            "IMAGE",
+            "GEOMETRY",
+            "COLLECTION",
+            "TEXTURE",
+            "MATERIAL",
+            "BUNDLE",
+            "CLOSURE",
+            "FONT",
+            "SCENE",
+            "TEXT",
+            "MASK",
+            "SOUND",
+            "INT_VECTOR"
+          ]
+        }
+      ]
+    },
+    "NodeFrame": {
+      "label": "Frame",
+      "inputs": [],
+      "outputs": [],
+      "settings": []
+    },
+    "NodeGroupInput": {
+      "label": "Group Input",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "identifier": "__extend__",
+          "type": "CUSTOM"
+        }
+      ],
+      "settings": []
+    },
+    "NodeGroupOutput": {
+      "label": "Group Output",
+      "inputs": [
+        {
+          "name": "",
+          "identifier": "__extend__",
+          "type": "CUSTOM"
+        }
+      ],
+      "outputs": [],
+      "settings": []
+    },
+    "NodeImplicitConversion": {
+      "label": "Implicit Conversion",
+      "inputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "RGBA",
+          "values": [
+            "FLOAT",
+            "INT",
+            "BOOLEAN",
+            "VECTOR",
+            "RGBA",
+            "ROTATION",
+            "MATRIX",
+            "STRING",
+            "MENU",
+            "SHADER",
+            "OBJECT",
+            "IMAGE",
+            "GEOMETRY",
+            "COLLECTION",
+            "TEXTURE",
+            "MATERIAL",
+            "BUNDLE",
+            "CLOSURE",
+            "FONT",
+            "SCENE",
+            "TEXT",
+            "MASK",
+            "SOUND",
+            "INT_VECTOR"
+          ]
+        }
+      ]
+    },
+    "NodeReroute": {
+      "label": "Reroute",
+      "inputs": [
+        {
+          "name": "Input",
+          "identifier": "Input",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Output",
+          "identifier": "Output",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeBlackbody": {
+      "label": "Blackbody",
+      "inputs": [
+        {
+          "name": "Temperature",
+          "identifier": "Temperature",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeClamp": {
+      "label": "Clamp",
+      "inputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Min",
+          "identifier": "Min",
+          "type": "VALUE"
+        },
+        {
+          "name": "Max",
+          "identifier": "Max",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Result",
+          "identifier": "Result",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "clamp_type",
+          "default": "MINMAX",
+          "values": [
+            "MINMAX",
+            "RANGE"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeCombineXYZ": {
+      "label": "Combine XYZ",
+      "inputs": [
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Z",
+          "identifier": "Z",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeFloatCurve": {
+      "label": "Float Curve",
+      "inputs": [
+        {
+          "name": "Factor",
+          "identifier": "Factor",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeGamma": {
+      "label": "Gamma",
+      "inputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Gamma",
+          "identifier": "Gamma",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeMapRange": {
+      "label": "Map Range",
+      "inputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "From Min",
+          "identifier": "From Min",
+          "type": "VALUE"
+        },
+        {
+          "name": "From Max",
+          "identifier": "From Max",
+          "type": "VALUE"
+        },
+        {
+          "name": "To Min",
+          "identifier": "To Min",
+          "type": "VALUE"
+        },
+        {
+          "name": "To Max",
+          "identifier": "To Max",
+          "type": "VALUE"
+        },
+        {
+          "name": "Steps",
+          "identifier": "Steps",
+          "type": "VALUE"
+        },
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "From Min",
+          "identifier": "From_Min_FLOAT3",
+          "type": "VECTOR"
+        },
+        {
+          "name": "From Max",
+          "identifier": "From_Max_FLOAT3",
+          "type": "VECTOR"
+        },
+        {
+          "name": "To Min",
+          "identifier": "To_Min_FLOAT3",
+          "type": "VECTOR"
+        },
+        {
+          "name": "To Max",
+          "identifier": "To_Max_FLOAT3",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Steps",
+          "identifier": "Steps_FLOAT3",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Result",
+          "identifier": "Result",
+          "type": "VALUE"
+        },
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": [
+        {
+          "name": "interpolation_type",
+          "default": "LINEAR",
+          "values": [
+            "LINEAR",
+            "STEPPED",
+            "SMOOTHSTEP",
+            "SMOOTHERSTEP"
+          ]
+        },
+        {
+          "name": "data_type",
+          "default": "FLOAT",
+          "values": [
+            "FLOAT",
+            "FLOAT_VECTOR"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeMath": {
+      "label": "Math",
+      "inputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value_001",
+          "type": "VALUE"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value_002",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "operation",
+          "default": "ADD",
+          "values": [
+            "ADD",
+            "SUBTRACT",
+            "MULTIPLY",
+            "DIVIDE",
+            "MULTIPLY_ADD",
+            "POWER",
+            "LOGARITHM",
+            "SQRT",
+            "INVERSE_SQRT",
+            "ABSOLUTE",
+            "EXPONENT",
+            "MINIMUM",
+            "MAXIMUM",
+            "LESS_THAN",
+            "GREATER_THAN",
+            "SIGN",
+            "COMPARE",
+            "SMOOTH_MIN",
+            "SMOOTH_MAX",
+            "ROUND",
+            "FLOOR",
+            "CEIL",
+            "TRUNC",
+            "FRACT",
+            "MODULO",
+            "FLOORED_MODULO",
+            "WRAP",
+            "SNAP",
+            "PINGPONG",
+            "SINE",
+            "COSINE",
+            "TANGENT",
+            "ARCSINE",
+            "ARCCOSINE",
+            "ARCTANGENT",
+            "ARCTAN2",
+            "SINH",
+            "COSH",
+            "TANH",
+            "RADIANS",
+            "DEGREES"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeMix": {
+      "label": "Mix",
+      "inputs": [
+        {
+          "name": "Factor",
+          "identifier": "Factor_Float",
+          "type": "VALUE"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Factor_Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "A",
+          "identifier": "A_Float",
+          "type": "VALUE"
+        },
+        {
+          "name": "B",
+          "identifier": "B_Float",
+          "type": "VALUE"
+        },
+        {
+          "name": "A",
+          "identifier": "A_Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "B",
+          "identifier": "B_Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "A",
+          "identifier": "A_Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "B",
+          "identifier": "B_Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "A",
+          "identifier": "A_Rotation",
+          "type": "ROTATION"
+        },
+        {
+          "name": "B",
+          "identifier": "B_Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Result",
+          "identifier": "Result_Float",
+          "type": "VALUE"
+        },
+        {
+          "name": "Result",
+          "identifier": "Result_Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Result",
+          "identifier": "Result_Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Result",
+          "identifier": "Result_Rotation",
+          "type": "ROTATION"
+        }
+      ],
+      "settings": [
+        {
+          "name": "data_type",
+          "default": "FLOAT",
+          "values": [
+            "FLOAT",
+            "VECTOR",
+            "RGBA",
+            "ROTATION"
+          ]
+        },
+        {
+          "name": "factor_mode",
+          "default": "UNIFORM",
+          "values": [
+            "UNIFORM",
+            "NON_UNIFORM"
+          ]
+        },
+        {
+          "name": "blend_type",
+          "default": "MIX",
+          "values": [
+            "MIX",
+            "DARKEN",
+            "MULTIPLY",
+            "BURN",
+            "LIGHTEN",
+            "SCREEN",
+            "DODGE",
+            "ADD",
+            "OVERLAY",
+            "SOFT_LIGHT",
+            "LINEAR_LIGHT",
+            "DIFFERENCE",
+            "EXCLUSION",
+            "SUBTRACT",
+            "DIVIDE",
+            "HUE",
+            "SATURATION",
+            "COLOR",
+            "VALUE"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeMixRGB": {
+      "label": "Mix (Legacy)",
+      "inputs": [
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color1",
+          "identifier": "Color1",
+          "type": "RGBA"
+        },
+        {
+          "name": "Color2",
+          "identifier": "Color2",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "blend_type",
+          "default": "MIX",
+          "values": [
+            "MIX",
+            "DARKEN",
+            "MULTIPLY",
+            "BURN",
+            "LIGHTEN",
+            "SCREEN",
+            "DODGE",
+            "ADD",
+            "OVERLAY",
+            "SOFT_LIGHT",
+            "LINEAR_LIGHT",
+            "DIFFERENCE",
+            "EXCLUSION",
+            "SUBTRACT",
+            "DIVIDE",
+            "HUE",
+            "SATURATION",
+            "COLOR",
+            "VALUE"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeRGBCurve": {
+      "label": "RGB Curves",
+      "inputs": [
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeRadialTiling": {
+      "label": "Radial Tiling",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Sides",
+          "identifier": "Sides",
+          "type": "VALUE"
+        },
+        {
+          "name": "Roundness",
+          "identifier": "Roundness",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Segment Coordinates",
+          "identifier": "Segment Coordinates",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Segment ID",
+          "identifier": "Segment ID",
+          "type": "VALUE"
+        },
+        {
+          "name": "Segment Width",
+          "identifier": "Segment Width",
+          "type": "VALUE"
+        },
+        {
+          "name": "Segment Rotation",
+          "identifier": "Segment Rotation",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeSeparateXYZ": {
+      "label": "Separate XYZ",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "X",
+          "identifier": "X",
+          "type": "VALUE"
+        },
+        {
+          "name": "Y",
+          "identifier": "Y",
+          "type": "VALUE"
+        },
+        {
+          "name": "Z",
+          "identifier": "Z",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeTexBrick": {
+      "label": "Brick Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Color1",
+          "identifier": "Color1",
+          "type": "RGBA"
+        },
+        {
+          "name": "Color2",
+          "identifier": "Color2",
+          "type": "RGBA"
+        },
+        {
+          "name": "Mortar",
+          "identifier": "Mortar",
+          "type": "RGBA"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Mortar Size",
+          "identifier": "Mortar Size",
+          "type": "VALUE"
+        },
+        {
+          "name": "Mortar Smooth",
+          "identifier": "Mortar Smooth",
+          "type": "VALUE"
+        },
+        {
+          "name": "Bias",
+          "identifier": "Bias",
+          "type": "VALUE"
+        },
+        {
+          "name": "Brick Width",
+          "identifier": "Brick Width",
+          "type": "VALUE"
+        },
+        {
+          "name": "Row Height",
+          "identifier": "Row Height",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeTexChecker": {
+      "label": "Checker Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Color1",
+          "identifier": "Color1",
+          "type": "RGBA"
+        },
+        {
+          "name": "Color2",
+          "identifier": "Color2",
+          "type": "RGBA"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeTexGabor": {
+      "label": "Gabor Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Frequency",
+          "identifier": "Frequency",
+          "type": "VALUE"
+        },
+        {
+          "name": "Anisotropy",
+          "identifier": "Anisotropy",
+          "type": "VALUE"
+        },
+        {
+          "name": "Orientation",
+          "identifier": "Orientation 2D",
+          "type": "VALUE"
+        },
+        {
+          "name": "Orientation",
+          "identifier": "Orientation 3D",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Phase",
+          "identifier": "Phase",
+          "type": "VALUE"
+        },
+        {
+          "name": "Intensity",
+          "identifier": "Intensity",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "gabor_type",
+          "default": "2D",
+          "values": [
+            "2D",
+            "3D"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeTexGradient": {
+      "label": "Gradient Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "gradient_type",
+          "default": "LINEAR",
+          "values": [
+            "LINEAR",
+            "QUADRATIC",
+            "EASING",
+            "DIAGONAL",
+            "SPHERICAL",
+            "QUADRATIC_SPHERE",
+            "RADIAL"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeTexMagic": {
+      "label": "Magic Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Distortion",
+          "identifier": "Distortion",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeTexNoise": {
+      "label": "Noise Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "W",
+          "identifier": "W",
+          "type": "VALUE"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Detail",
+          "identifier": "Detail",
+          "type": "VALUE"
+        },
+        {
+          "name": "Roughness",
+          "identifier": "Roughness",
+          "type": "VALUE"
+        },
+        {
+          "name": "Lacunarity",
+          "identifier": "Lacunarity",
+          "type": "VALUE"
+        },
+        {
+          "name": "Offset",
+          "identifier": "Offset",
+          "type": "VALUE"
+        },
+        {
+          "name": "Gain",
+          "identifier": "Gain",
+          "type": "VALUE"
+        },
+        {
+          "name": "Distortion",
+          "identifier": "Distortion",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "noise_dimensions",
+          "default": "2D",
+          "values": [
+            "1D",
+            "2D",
+            "3D",
+            "4D"
+          ]
+        },
+        {
+          "name": "noise_type",
+          "default": "FBM",
+          "values": [
+            "MULTIFRACTAL",
+            "RIDGED_MULTIFRACTAL",
+            "HYBRID_MULTIFRACTAL",
+            "FBM",
+            "HETERO_TERRAIN"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeTexVoronoi": {
+      "label": "Voronoi Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "W",
+          "identifier": "W",
+          "type": "VALUE"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Detail",
+          "identifier": "Detail",
+          "type": "VALUE"
+        },
+        {
+          "name": "Roughness",
+          "identifier": "Roughness",
+          "type": "VALUE"
+        },
+        {
+          "name": "Lacunarity",
+          "identifier": "Lacunarity",
+          "type": "VALUE"
+        },
+        {
+          "name": "Smoothness",
+          "identifier": "Smoothness",
+          "type": "VALUE"
+        },
+        {
+          "name": "Exponent",
+          "identifier": "Exponent",
+          "type": "VALUE"
+        },
+        {
+          "name": "Randomness",
+          "identifier": "Randomness",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Distance",
+          "identifier": "Distance",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Position",
+          "identifier": "Position",
+          "type": "VECTOR"
+        },
+        {
+          "name": "W",
+          "identifier": "W",
+          "type": "VALUE"
+        },
+        {
+          "name": "Radius",
+          "identifier": "Radius",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "voronoi_dimensions",
+          "default": "2D",
+          "values": [
+            "1D",
+            "2D",
+            "3D",
+            "4D"
+          ]
+        },
+        {
+          "name": "distance",
+          "default": "EUCLIDEAN",
+          "values": [
+            "EUCLIDEAN",
+            "MANHATTAN",
+            "CHEBYCHEV",
+            "MINKOWSKI"
+          ]
+        },
+        {
+          "name": "feature",
+          "default": "F1",
+          "values": [
+            "F1",
+            "F2",
+            "SMOOTH_F1",
+            "DISTANCE_TO_EDGE",
+            "N_SPHERE_RADIUS"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeTexWave": {
+      "label": "Wave Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Distortion",
+          "identifier": "Distortion",
+          "type": "VALUE"
+        },
+        {
+          "name": "Detail",
+          "identifier": "Detail",
+          "type": "VALUE"
+        },
+        {
+          "name": "Detail Scale",
+          "identifier": "Detail Scale",
+          "type": "VALUE"
+        },
+        {
+          "name": "Detail Roughness",
+          "identifier": "Detail Roughness",
+          "type": "VALUE"
+        },
+        {
+          "name": "Phase Offset",
+          "identifier": "Phase Offset",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "wave_type",
+          "default": "BANDS",
+          "values": [
+            "BANDS",
+            "RINGS"
+          ]
+        },
+        {
+          "name": "bands_direction",
+          "default": "X",
+          "values": [
+            "X",
+            "Y",
+            "Z",
+            "DIAGONAL"
+          ]
+        },
+        {
+          "name": "rings_direction",
+          "default": "X",
+          "values": [
+            "X",
+            "Y",
+            "Z",
+            "SPHERICAL"
+          ]
+        },
+        {
+          "name": "wave_profile",
+          "default": "SIN",
+          "values": [
+            "SIN",
+            "SAW",
+            "TRI"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeTexWhiteNoise": {
+      "label": "White Noise Texture",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "W",
+          "identifier": "W",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        },
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        }
+      ],
+      "settings": [
+        {
+          "name": "noise_dimensions",
+          "default": "2D",
+          "values": [
+            "1D",
+            "2D",
+            "3D",
+            "4D"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeValToRGB": {
+      "label": "Color Ramp",
+      "inputs": [
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Color",
+          "identifier": "Color",
+          "type": "RGBA"
+        },
+        {
+          "name": "Alpha",
+          "identifier": "Alpha",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeValue": {
+      "label": "Value",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeVectorCurve": {
+      "label": "Vector Curves",
+      "inputs": [
+        {
+          "name": "Factor",
+          "identifier": "Fac",
+          "type": "VALUE"
+        },
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": []
+    },
+    "ShaderNodeVectorMath": {
+      "label": "Vector Math",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Vector",
+          "identifier": "Vector_001",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Vector",
+          "identifier": "Vector_002",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Scale",
+          "identifier": "Scale",
+          "type": "VALUE"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Value",
+          "identifier": "Value",
+          "type": "VALUE"
+        }
+      ],
+      "settings": [
+        {
+          "name": "operation",
+          "default": "ADD",
+          "values": [
+            "ADD",
+            "SUBTRACT",
+            "MULTIPLY",
+            "DIVIDE",
+            "MULTIPLY_ADD",
+            "CROSS_PRODUCT",
+            "PROJECT",
+            "REFLECT",
+            "REFRACT",
+            "FACEFORWARD",
+            "DOT_PRODUCT",
+            "DISTANCE",
+            "LENGTH",
+            "SCALE",
+            "NORMALIZE",
+            "ABSOLUTE",
+            "POWER",
+            "SIGN",
+            "MINIMUM",
+            "MAXIMUM",
+            "ROUND",
+            "FLOOR",
+            "CEIL",
+            "FRACTION",
+            "MODULO",
+            "WRAP",
+            "SNAP",
+            "SINE",
+            "COSINE",
+            "TANGENT"
+          ]
+        }
+      ]
+    },
+    "ShaderNodeVectorRotate": {
+      "label": "Vector Rotate",
+      "inputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Center",
+          "identifier": "Center",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Axis",
+          "identifier": "Axis",
+          "type": "VECTOR"
+        },
+        {
+          "name": "Angle",
+          "identifier": "Angle",
+          "type": "VALUE"
+        },
+        {
+          "name": "Rotation",
+          "identifier": "Rotation",
+          "type": "VECTOR"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Vector",
+          "identifier": "Vector",
+          "type": "VECTOR"
+        }
+      ],
+      "settings": [
+        {
+          "name": "rotation_type",
+          "default": "AXIS_ANGLE",
+          "values": [
+            "AXIS_ANGLE",
+            "X_AXIS",
+            "Y_AXIS",
+            "Z_AXIS",
+            "EULER_XYZ"
+          ]
+        }
+      ]
+    }
+  },
+  "skipped": {
+    "CompositorNode": "Error: Node type CompositorNode undefined",
+    "CompositorNodeCustomGroup": "Error: Node type CompositorNodeCustomGroup undefined",
+    "CompositorNodeGamma": "Error: Node type CompositorNodeGamma undefined"
+  }
+}

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Blender
+*.blend1
+*.blend2
+
+# NOTE: data/schemas/*.json ARE committed on purpose — they are version-pinned
+# grounding data the agent depends on, not build artifacts.
