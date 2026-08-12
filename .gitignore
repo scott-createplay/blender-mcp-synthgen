@@ -28,3 +28,6 @@ htmlcov/
 
 # NOTE: data/schemas/*.json ARE committed on purpose — they are version-pinned
 # grounding data the agent depends on, not build artifacts.
+
+# Rig tooling state (not project files)
+.rig/
