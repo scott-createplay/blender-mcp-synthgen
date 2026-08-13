@@ -4,10 +4,9 @@ REQUIRES BLENDER. The module stays importable without bpy (so the package import
 machine), but instantiating LiveGraph without Blender raises. Not covered by the offline test
 suite — validate under `blender --background --python ...` or headless `pip install bpy`.
 
-Implements **tier-① (native pointer) edges** by querying bpy on demand — an edge is computed
-only when a traversal pulls it (Houdini-style cook-on-pull). Tier-② edges (attr_bridge, via
-cook-then-read of evaluated `.attributes`) are the documented next step — see the TODO at the
-bottom and knowledge/scene_graph_contexts.md.
+Tier-① (native pointer) edges are queried on demand (Houdini-style cook-on-pull).
+Tier-② (attr_bridge) edges are resolved by calling `resolve_attr_bridges()` — cooks the
+depsgraph, reads evaluated `.attributes`, joins with shader readers and GN writer provenance.
 
 Addressing (stable qualified paths):
     COL:<col> ; OBJ:<obj> ; OBJ:<obj>/MOD:<mod> ; NG:<tree> ; MAT:<mat> ;
@@ -18,7 +17,7 @@ from __future__ import annotations
 
 from typing import Iterator, Optional
 
-from .protocol import TIER_NATIVE, Edge
+from .protocol import TIER_NATIVE, TIER_RECONSTRUCTED, Edge
 
 try:
     import bpy
@@ -46,10 +45,16 @@ class LiveGraph:
             raise RuntimeError(
                 "backend_bpy requires Blender (bpy). Run under Blender or headless `pip install bpy`.")
         self.scene = scene or bpy.context.scene
+        self._bridge_edges: dict[str, list[Edge]] = {}
 
     # --- protocol ---------------------------------------------------------
     def nodes(self) -> Iterator[str]:
-        """Bounded top-level enumeration; deeper ids are reached via neighbors()."""
+        """Bounded top-level enumeration; deeper ids are reached via neighbors().
+
+        After resolve_attr_bridges(), also yields bridge-participating NODE: ids
+        so attribute_trace / impact_set can discover tier-2 edges.
+        """
+        yield _col(self.scene.collection)
         for c in bpy.data.collections:
             yield _col(c)
         for o in bpy.data.objects:
@@ -61,6 +66,8 @@ class LiveGraph:
             yield _ng(ng)
         for m in bpy.data.materials:
             yield _mat(m)
+        for nid in self._bridge_edges:
+            yield nid
 
     def resolve(self, node_id: str) -> Optional[dict]:
         tail = node_id.rsplit("/", 1)[-1]
@@ -88,9 +95,14 @@ class LiveGraph:
         elif node_id.startswith("MAT:"):
             m = bpy.data.materials.get(node_id[4:])
             yield from self._tree(node_id, m.node_tree if m and m.use_nodes else None)
+        yield from self._bridge_edges.get(node_id, ())
 
     def _collection(self, cid):
-        c = bpy.data.collections.get(cid[4:])
+        name = cid[4:]
+        if name == self.scene.collection.name:
+            c = self.scene.collection
+        else:
+            c = bpy.data.collections.get(name)
         if not c:
             return
         for o in c.objects:
@@ -112,6 +124,7 @@ class LiveGraph:
         for slot in o.material_slots:
             if slot.material:
                 yield _e(oid, _mat(slot.material), "uses_material")
+        yield from self._drivers(oid, o)
 
     def _modifier(self, mid):
         oname, mname = mid[4:].split("/MOD:")
@@ -152,8 +165,141 @@ class LiveGraph:
                 yield _e(node_id, dst, ref_type,
                          note="check modifier-interface input too (see spec gotcha)")
 
-    # --- TODO: tier-2 --------------------------------------------------------
-    # resolve_attr_bridges(): cook the depsgraph, read evaluated obj.data.attributes and
-    #   dg.object_instances attributes (authoritative names), join with shader
-    #   ShaderNodeAttribute.attribute_name and GN Store/Capture provenance -> attr_bridge
-    #   edges tagged state_dependent=True. See knowledge/attribute_bridge.md.
+    def _drivers(self, oid, obj):
+        ad = obj.animation_data
+        if not ad:
+            return
+        seen = set()
+        for fc in ad.drivers:
+            for var in fc.driver.variables:
+                for target in var.targets:
+                    ref = target.id
+                    if ref is None or not isinstance(ref, bpy.types.Object):
+                        continue
+                    ref_id = _obj(ref)
+                    if ref_id not in seen:
+                        seen.add(ref_id)
+                        yield _e(ref_id, oid, "drives")
+
+    # --- tier-2: attribute bridge -------------------------------------------
+
+    def resolve_attr_bridges(self):
+        """Cook the depsgraph and resolve GN↔shader attribute bridge edges.
+
+        Joins three sources (see knowledge/attribute_bridge.md):
+          1. Evaluated .attributes on each object (authoritative names)
+          2. ShaderNodeAttribute.attribute_name on each material (readers)
+          3. GN Store Named Attribute nodes (provenance — best-effort if name is dynamic)
+
+        Call explicitly; populates self._bridge_edges so neighbors() yields them.
+        """
+        dg = bpy.context.evaluated_depsgraph_get()
+        dg.update()
+        self._bridge_edges = {}
+
+        for obj in bpy.data.objects:
+            gn_trees = []
+            for mod in obj.modifiers:
+                if mod.type == "NODES" and mod.node_group:
+                    gn_trees.append(mod.node_group)
+            if not gn_trees:
+                continue
+
+            materials = [
+                slot.material for slot in obj.material_slots
+                if slot.material and slot.material.use_nodes and slot.material.node_tree
+            ]
+            if not materials:
+                continue
+
+            shader_readers = {}
+            for mat in materials:
+                for node in mat.node_tree.nodes:
+                    if node.bl_idname == "ShaderNodeAttribute" and node.attribute_name:
+                        nid = f"{_mat(mat)}/NODE:{node.name}"
+                        shader_readers.setdefault(node.attribute_name, []).append(nid)
+
+            if not shader_readers:
+                continue
+
+            eval_obj = obj.evaluated_get(dg)
+            eval_attrs = {}
+            if eval_obj.data and hasattr(eval_obj.data, "attributes"):
+                for a in eval_obj.data.attributes:
+                    eval_attrs[a.name] = {
+                        "domain": a.domain,
+                        "data_type": a.data_type,
+                    }
+            if hasattr(eval_obj, "evaluated_geometry"):
+                try:
+                    geom = eval_obj.evaluated_geometry()
+                    ipc = geom.instances_pointcloud() if geom else None
+                    if ipc and hasattr(ipc, "attributes"):
+                        for a in ipc.attributes:
+                            if a.name not in eval_attrs:
+                                eval_attrs[a.name] = {
+                                    "domain": a.domain,
+                                    "data_type": a.data_type,
+                                }
+                except Exception:
+                    pass
+
+            gn_writers = {}
+            for tree in gn_trees:
+                for node in tree.nodes:
+                    if node.bl_idname == "GeometryNodeStoreNamedAttribute":
+                        name_sock = node.inputs.get("Name")
+                        if name_sock and not name_sock.is_linked:
+                            attr_name = name_sock.default_value
+                            if attr_name:
+                                nid = f"{_ng(tree)}/NODE:{node.name}"
+                                gn_writers.setdefault(attr_name, []).append({
+                                    "node_id": nid,
+                                    "data_type": node.data_type,
+                                    "domain": node.domain,
+                                })
+
+            bridged = set(shader_readers.keys()) & (
+                set(eval_attrs.keys()) | set(gn_writers.keys())
+            )
+
+            for attr_name in bridged:
+                writers = gn_writers.get(attr_name, [])
+                readers = shader_readers[attr_name]
+                confirmed = attr_name in eval_attrs
+
+                for reader_id in readers:
+                    if writers:
+                        for w in writers:
+                            edge = Edge(
+                                src=reader_id, dst=w["node_id"],
+                                type="attr_bridge",
+                                tier=TIER_RECONSTRUCTED,
+                                state_dependent=True,
+                                data={
+                                    "attr": attr_name,
+                                    "domain": w["domain"],
+                                    "data_type": w["data_type"],
+                                    "object": _obj(obj),
+                                    "confirmed_by_eval": confirmed,
+                                },
+                            )
+                            self._bridge_edges.setdefault(reader_id, []).append(edge)
+                    else:
+                        ea = eval_attrs.get(attr_name, {})
+                        edge = Edge(
+                            src=reader_id, dst=_obj(obj),
+                            type="attr_bridge",
+                            tier=TIER_RECONSTRUCTED,
+                            state_dependent=True,
+                            resolved=False,
+                            data={
+                                "attr": attr_name,
+                                "domain": ea.get("domain", "UNKNOWN"),
+                                "data_type": ea.get("data_type", "UNKNOWN"),
+                                "object": _obj(obj),
+                                "confirmed_by_eval": confirmed,
+                                "note": "writer unresolved — name may be dynamic",
+                            },
+                        )
+                        self._bridge_edges.setdefault(reader_id, []).append(edge)

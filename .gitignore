@@ -23,6 +23,7 @@ htmlcov/
 .DS_Store
 
 # Blender
+*.blend
 *.blend1
 *.blend2
 

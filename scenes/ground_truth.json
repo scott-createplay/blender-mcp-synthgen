@@ -1,0 +1,271 @@
+{
+  "meta": {
+    "blender_version": "5.2.0",
+    "built_by": "build_test_scene.py",
+    "features_covered": [
+      "object_hierarchy",
+      "collection_hierarchy",
+      "gn_modifier",
+      "gn_internal_links",
+      "group_input_parameter",
+      "material_slot",
+      "shader_node_tree_links",
+      "shader_attribute_reads_named_attr",
+      "gn_store_named_attribute",
+      "instance_on_points",
+      "compositor_node_group_5x",
+      "driver",
+      "object_reference_in_gn"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "COL:Scene Collection",
+      "kind": "collection"
+    },
+    {
+      "id": "COL:TestRoot",
+      "kind": "collection"
+    },
+    {
+      "id": "COL:ChildCollection",
+      "kind": "collection"
+    },
+    {
+      "id": "OBJ:ParentEmpty",
+      "kind": "object"
+    },
+    {
+      "id": "OBJ:ChildCube",
+      "kind": "object"
+    },
+    {
+      "id": "OBJ:InstanceTarget",
+      "kind": "object"
+    },
+    {
+      "id": "OBJ:DriverSource",
+      "kind": "object"
+    },
+    {
+      "id": "OBJ:ChildCube/MOD:GeometryNodes",
+      "kind": "modifier"
+    },
+    {
+      "id": "NG:GN_TestTree",
+      "kind": "nodetree_def"
+    },
+    {
+      "id": "NG:CompositorTree",
+      "kind": "nodetree_def"
+    },
+    {
+      "id": "NG:GN_TestTree/NODE:Group Input",
+      "kind": "gn_node"
+    },
+    {
+      "id": "NG:GN_TestTree/NODE:Group Output",
+      "kind": "gn_node"
+    },
+    {
+      "id": "NG:GN_TestTree/NODE:Store Named Attribute",
+      "kind": "gn_node"
+    },
+    {
+      "id": "NG:GN_TestTree/NODE:Random Value",
+      "kind": "gn_node"
+    },
+    {
+      "id": "NG:GN_TestTree/NODE:Instance on Points",
+      "kind": "gn_node"
+    },
+    {
+      "id": "NG:GN_TestTree/NODE:Object Info",
+      "kind": "gn_node"
+    },
+    {
+      "id": "MAT:TestMaterial",
+      "kind": "material"
+    },
+    {
+      "id": "MAT:TestMaterial/NODE:Material Output",
+      "kind": "shader_node"
+    },
+    {
+      "id": "MAT:TestMaterial/NODE:Principled BSDF",
+      "kind": "shader_node"
+    },
+    {
+      "id": "MAT:TestMaterial/NODE:Attribute",
+      "kind": "shader_node"
+    },
+    {
+      "id": "NG:CompositorTree/NODE:Render Layers",
+      "kind": "compositor_node"
+    },
+    {
+      "id": "NG:CompositorTree/NODE:Brightness/Contrast",
+      "kind": "compositor_node"
+    },
+    {
+      "id": "NG:CompositorTree/NODE:Viewer",
+      "kind": "compositor_node"
+    }
+  ],
+  "edges": [
+    {
+      "src": "COL:Scene Collection",
+      "dst": "COL:TestRoot",
+      "type": "collection_contains",
+      "tier": 1
+    },
+    {
+      "src": "COL:TestRoot",
+      "dst": "COL:ChildCollection",
+      "type": "collection_contains",
+      "tier": 1
+    },
+    {
+      "src": "COL:TestRoot",
+      "dst": "OBJ:ParentEmpty",
+      "type": "collection_contains",
+      "tier": 1
+    },
+    {
+      "src": "COL:TestRoot",
+      "dst": "OBJ:DriverSource",
+      "type": "collection_contains",
+      "tier": 1
+    },
+    {
+      "src": "COL:ChildCollection",
+      "dst": "OBJ:ChildCube",
+      "type": "collection_contains",
+      "tier": 1
+    },
+    {
+      "src": "COL:ChildCollection",
+      "dst": "OBJ:InstanceTarget",
+      "type": "collection_contains",
+      "tier": 1
+    },
+    {
+      "src": "OBJ:ChildCube",
+      "dst": "OBJ:ParentEmpty",
+      "type": "parent",
+      "tier": 1
+    },
+    {
+      "src": "OBJ:ChildCube",
+      "dst": "OBJ:ChildCube/MOD:GeometryNodes",
+      "type": "has_modifier",
+      "tier": 1
+    },
+    {
+      "src": "OBJ:ChildCube/MOD:GeometryNodes",
+      "dst": "NG:GN_TestTree",
+      "type": "modifier_uses_tree",
+      "tier": 1
+    },
+    {
+      "src": "OBJ:ChildCube",
+      "dst": "MAT:TestMaterial",
+      "type": "uses_material",
+      "tier": 1
+    },
+    {
+      "src": "NG:GN_TestTree",
+      "dst": "NG:GN_TestTree/NODE:Group Input",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:GN_TestTree",
+      "dst": "NG:GN_TestTree/NODE:Group Output",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:GN_TestTree",
+      "dst": "NG:GN_TestTree/NODE:Store Named Attribute",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:GN_TestTree",
+      "dst": "NG:GN_TestTree/NODE:Random Value",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:GN_TestTree",
+      "dst": "NG:GN_TestTree/NODE:Instance on Points",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:GN_TestTree",
+      "dst": "NG:GN_TestTree/NODE:Object Info",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "MAT:TestMaterial",
+      "dst": "MAT:TestMaterial/NODE:Material Output",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "MAT:TestMaterial",
+      "dst": "MAT:TestMaterial/NODE:Principled BSDF",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "MAT:TestMaterial",
+      "dst": "MAT:TestMaterial/NODE:Attribute",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:CompositorTree",
+      "dst": "NG:CompositorTree/NODE:Render Layers",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:CompositorTree",
+      "dst": "NG:CompositorTree/NODE:Brightness/Contrast",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:CompositorTree",
+      "dst": "NG:CompositorTree/NODE:Viewer",
+      "type": "tree_contains_node",
+      "tier": 1
+    },
+    {
+      "src": "NG:GN_TestTree/NODE:Object Info",
+      "dst": "OBJ:InstanceTarget",
+      "type": "references_object",
+      "tier": 1
+    },
+    {
+      "src": "OBJ:DriverSource",
+      "dst": "OBJ:ChildCube",
+      "type": "drives",
+      "tier": 1,
+      "detail": "DriverSource.location[1] -> ChildCube.location[0]"
+    }
+  ],
+  "attributes": [
+    {
+      "name": "inst_color",
+      "domain": "POINT",
+      "data_type": "FLOAT_COLOR",
+      "writer": "NG:GN_TestTree/NODE:Store Named Attribute",
+      "reader": "MAT:TestMaterial/NODE:Attribute"
+    }
+  ]
+}

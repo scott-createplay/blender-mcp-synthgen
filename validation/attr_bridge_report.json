@@ -1,0 +1,33 @@
+{
+  "bridge_edges": [
+    {
+      "src": "MAT:TestMaterial/NODE:Attribute",
+      "dst": "NG:GN_TestTree/NODE:Store Named Attribute",
+      "type": "attr_bridge",
+      "tier": 2,
+      "state_dependent": true,
+      "resolved": true,
+      "data": {
+        "attr": "inst_color",
+        "domain": "POINT",
+        "data_type": "FLOAT_COLOR",
+        "object": "OBJ:ChildCube",
+        "confirmed_by_eval": true
+      }
+    }
+  ],
+  "attribute_trace_inst_color": {
+    "count": 1,
+    "edges": [
+      {
+        "src": "MAT:TestMaterial/NODE:Attribute",
+        "dst": "NG:GN_TestTree/NODE:Store Named Attribute",
+        "attr": "inst_color"
+      }
+    ]
+  },
+  "impact_set_from_writer": [
+    "MAT:TestMaterial/NODE:Attribute"
+  ],
+  "writer_reachable_from_reader": true
+}

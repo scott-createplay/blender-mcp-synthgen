@@ -59,3 +59,46 @@ def test_impact_set_over_dataflow(g):
     impacted = traverse.impact_set(
         g, "NG:WillowGrowth/NODE:StoreNamedAttribute", edge_types={"attr_bridge"})
     assert impacted == {"MAT:Bark/NODE:Attribute"}
+
+
+# --- attr_bridge snapshot tests (matching the live resolver) ------------------
+
+BRIDGE_FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "bridge_scene.json")
+
+
+@pytest.fixture
+def bg():
+    return SnapshotGraph.from_file(BRIDGE_FIXTURE)
+
+
+def test_bridge_edge_properties(bg):
+    edges = list(bg.neighbors("MAT:TestMaterial/NODE:Attribute", {"attr_bridge"}))
+    assert len(edges) == 1
+    e = edges[0]
+    assert e.src == "MAT:TestMaterial/NODE:Attribute"
+    assert e.dst == "NG:GN_TestTree/NODE:Store Named Attribute"
+    assert e.tier == 2
+    assert e.state_dependent is True
+    assert e.data["attr"] == "inst_color"
+    assert e.data["confirmed_by_eval"] is True
+
+
+def test_bridge_attribute_trace(bg):
+    res = traverse.attribute_trace(bg, "inst_color")
+    assert len(res["edges"]) == 1
+    assert res["edges"][0].data["attr"] == "inst_color"
+
+
+def test_bridge_impact_set(bg):
+    impacted = traverse.impact_set(
+        bg, "NG:GN_TestTree/NODE:Store Named Attribute", edge_types={"attr_bridge"})
+    assert impacted == {"MAT:TestMaterial/NODE:Attribute"}
+
+
+def test_bridge_reachable_includes_writer(bg):
+    reach = traverse.reachable(bg, "MAT:TestMaterial/NODE:Attribute")
+    assert "NG:GN_TestTree/NODE:Store Named Attribute" in reach
+
+
+def test_bridge_dead_attr(bg):
+    assert traverse.attribute_trace(bg, "nonexistent")["edges"] == []
