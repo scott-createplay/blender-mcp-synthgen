@@ -1,0 +1,37 @@
+{
+  "_comment": "Snapshot of the test scene built by scripts/build_test_scene.py — exercises the attr_bridge (tier-2) join: GN Store Named Attribute writes 'inst_color', shader Attribute node reads it.",
+  "nodes": [
+    { "id": "COL:Scene Collection", "kind": "collection" },
+    { "id": "COL:TestRoot", "kind": "collection" },
+    { "id": "COL:ChildCollection", "kind": "collection" },
+    { "id": "OBJ:ChildCube", "kind": "object" },
+    { "id": "OBJ:ParentEmpty", "kind": "object" },
+    { "id": "OBJ:InstanceTarget", "kind": "object" },
+    { "id": "OBJ:DriverSource", "kind": "object" },
+    { "id": "OBJ:ChildCube/MOD:GeometryNodes", "kind": "modifier", "data": { "type": "NODES" } },
+    { "id": "NG:GN_TestTree", "kind": "nodetree_def" },
+    { "id": "NG:GN_TestTree/NODE:Store Named Attribute", "kind": "gn_node",
+      "data": { "node_type": "GeometryNodeStoreNamedAttribute", "attr": "inst_color", "domain": "POINT", "data_type": "FLOAT_COLOR" } },
+    { "id": "NG:GN_TestTree/NODE:Object Info", "kind": "gn_node",
+      "data": { "node_type": "GeometryNodeObjectInfo" } },
+    { "id": "MAT:TestMaterial", "kind": "material" },
+    { "id": "MAT:TestMaterial/NODE:Attribute", "kind": "shader_node",
+      "data": { "node_type": "ShaderNodeAttribute", "attribute_name": "inst_color", "attribute_type": "INSTANCER" } }
+  ],
+  "edges": [
+    { "src": "COL:Scene Collection", "dst": "COL:TestRoot", "type": "collection_contains" },
+    { "src": "COL:TestRoot", "dst": "COL:ChildCollection", "type": "collection_contains" },
+    { "src": "COL:ChildCollection", "dst": "OBJ:ChildCube", "type": "collection_contains" },
+    { "src": "OBJ:ChildCube", "dst": "OBJ:ParentEmpty", "type": "parent" },
+    { "src": "OBJ:ChildCube", "dst": "OBJ:ChildCube/MOD:GeometryNodes", "type": "has_modifier" },
+    { "src": "OBJ:ChildCube/MOD:GeometryNodes", "dst": "NG:GN_TestTree", "type": "modifier_uses_tree" },
+    { "src": "NG:GN_TestTree", "dst": "NG:GN_TestTree/NODE:Store Named Attribute", "type": "tree_contains_node" },
+    { "src": "NG:GN_TestTree", "dst": "NG:GN_TestTree/NODE:Object Info", "type": "tree_contains_node" },
+    { "src": "NG:GN_TestTree/NODE:Object Info", "dst": "OBJ:InstanceTarget", "type": "references_object" },
+    { "src": "OBJ:ChildCube", "dst": "MAT:TestMaterial", "type": "uses_material" },
+    { "src": "MAT:TestMaterial", "dst": "MAT:TestMaterial/NODE:Attribute", "type": "tree_contains_node" },
+    { "src": "MAT:TestMaterial/NODE:Attribute", "dst": "NG:GN_TestTree/NODE:Store Named Attribute",
+      "type": "attr_bridge", "tier": 2, "state_dependent": true, "resolved": true,
+      "data": { "attr": "inst_color", "domain": "POINT", "data_type": "FLOAT_COLOR", "object": "OBJ:ChildCube", "confirmed_by_eval": true } }
+  ]
+}

@@ -1,5 +1,6 @@
 """Offline smoke tests for the grounded-schema query — no Blender required."""
 
+import os
 import pytest
 
 from synthgen.schema import query
@@ -36,3 +37,24 @@ def test_resolve_by_label():
     schema, _ = query.load_schema("gn")
     nid, node = query.resolve(schema["nodes"], "Store Named Attribute")
     assert nid == "GeometryNodeStoreNamedAttribute"
+
+
+class TestVersionResolution:
+    def test_exact_match(self):
+        assert query.resolve_schema_dir((5, 2, 0)) == "blender-5.2"
+
+    def test_patch_version_ignored(self):
+        assert query.resolve_schema_dir((5, 2, 3)) == "blender-5.2"
+
+    def test_closest_fallback(self):
+        result = query.resolve_schema_dir((5, 99, 0))
+        assert result.startswith("blender-")
+
+    def test_load_with_blender_dir(self):
+        schema, path = query.load_schema("gn", blender_dir="blender-5.2")
+        assert schema["tree_type"] == "GeometryNodeTree"
+        assert "blender-5.2" in path
+
+    def test_load_default_still_works(self):
+        schema, _ = query.load_schema("gn")
+        assert schema["tree_type"] == "GeometryNodeTree"

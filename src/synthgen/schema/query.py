@@ -25,18 +25,60 @@ import json
 import os
 import sys
 
-BLENDER_DIR = "blender-5.2"
+_DEFAULT_BLENDER_DIR = "blender-5.2"
 _KEY_TO_FILE = {"gn": "gn.json", "shader": "shader.json", "compositor": "compositor.json"}
 
 
-def _default_schema_dir():
-    # src/synthgen/schema/query.py -> repo root is three parents up
+def _schemas_root() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.normpath(os.path.join(here, "..", "..", "..", "data", "schemas", BLENDER_DIR))
+    return os.path.normpath(os.path.join(here, "..", "..", "..", "data", "schemas"))
 
 
-def load_schema(key="gn"):
-    schema_dir = os.environ.get("SYNTHGEN_SCHEMA_DIR") or _default_schema_dir()
+def resolve_schema_dir(version: tuple[int, int, int]) -> str:
+    """Map a Blender version tuple to the best matching schema directory.
+
+    Looks for exact major.minor match first, then falls back to the closest
+    available version directory. Returns the directory name (e.g. "blender-5.2"),
+    not the full path.
+    """
+    target = f"blender-{version[0]}.{version[1]}"
+    root = _schemas_root()
+
+    if os.path.isdir(os.path.join(root, target)):
+        return target
+
+    candidates = sorted(
+        d for d in os.listdir(root)
+        if d.startswith("blender-") and os.path.isdir(os.path.join(root, d))
+    )
+    if not candidates:
+        return _DEFAULT_BLENDER_DIR
+
+    def parse_ver(dirname: str) -> tuple[int, int]:
+        parts = dirname.removeprefix("blender-").split(".")
+        return (int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+
+    target_ver = (version[0], version[1])
+    best = min(candidates, key=lambda d: abs(
+        parse_ver(d)[0] * 1000 + parse_ver(d)[1] - target_ver[0] * 1000 - target_ver[1]
+    ))
+    return best
+
+
+def _default_schema_dir(blender_dir: str | None = None) -> str:
+    d = blender_dir or _DEFAULT_BLENDER_DIR
+    return os.path.join(_schemas_root(), d)
+
+
+def load_schema(key: str = "gn", blender_dir: str | None = None):
+    """Load a schema JSON file.
+
+    Args:
+        key: Schema type — "gn", "shader", or "compositor".
+        blender_dir: Schema subdirectory (e.g. "blender-5.2"). Falls back to
+            $SYNTHGEN_SCHEMA_DIR env var, then the hardcoded default.
+    """
+    schema_dir = os.environ.get("SYNTHGEN_SCHEMA_DIR") or _default_schema_dir(blender_dir)
     path = os.path.join(schema_dir, _KEY_TO_FILE[key])
     if not os.path.isfile(path):
         sys.exit(f"schema not found: {path}\n"
@@ -129,6 +171,67 @@ def cmd_stats(schema):
     print(f'{schema.get("tree_type", "?")}  |  Blender {schema.get("blender_version")}')
     print(f'{len(nodes)} nodes  (Geometry {geo}, Function {fn}, Shader {sh}, Compositor {co}, '
           f'other {len(nodes) - geo - fn - sh - co})')
+
+
+def data_find(nodes: dict, term: str) -> list[dict]:
+    """Return matching nodes as structured data (no printing)."""
+    t = term.lower()
+    return [
+        {"id": nid, "label": n["label"],
+         "inputs": [s["identifier"] for s in n["inputs"]],
+         "outputs": [s["identifier"] for s in n["outputs"]]}
+        for nid, n in sorted(nodes.items())
+        if t in nid.lower() or t in n["label"].lower()
+    ]
+
+
+def data_show(nodes: dict, key: str) -> dict | None:
+    """Return full node detail as structured data (no printing)."""
+    nid, n = resolve(nodes, key)
+    return {
+        "id": nid,
+        "label": n["label"],
+        "inputs": [
+            {"identifier": s["identifier"], "name": s["name"], "type": s["type"]}
+            for s in n["inputs"]
+        ],
+        "outputs": [
+            {"identifier": s["identifier"], "name": s["name"], "type": s["type"]}
+            for s in n["outputs"]
+        ],
+        "settings": [
+            {"name": st["name"], "default": st["default"], "values": st["values"]}
+            for st in n["settings"]
+        ],
+    }
+
+
+def data_socket(nodes: dict, term: str) -> list[dict]:
+    """Return nodes with matching sockets as structured data."""
+    t = term.lower()
+    results = []
+    for nid in sorted(nodes):
+        for io in ("inputs", "outputs"):
+            for s in nodes[nid][io]:
+                if t in s["name"].lower() or t in s["identifier"].lower():
+                    results.append({
+                        "node_id": nid, "direction": io[:-1],
+                        "identifier": s["identifier"], "type": s["type"],
+                    })
+    return results
+
+
+def data_setting(nodes: dict, term: str) -> list[dict]:
+    """Return nodes with matching enum settings as structured data."""
+    t = term.lower()
+    results = []
+    for nid in sorted(nodes):
+        for st in nodes[nid]["settings"]:
+            if t in st["name"].lower():
+                results.append({
+                    "node_id": nid, "setting": st["name"], "values": st["values"],
+                })
+    return results
 
 
 def main(argv=None):

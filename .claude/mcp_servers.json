@@ -1,0 +1,7 @@
+{
+  "synthgen": {
+    "command": "python",
+    "args": ["-m", "synthgen.mcp.server"],
+    "cwd": "c:\\Users\\scooter\\dev\\__projects__\\blender-synthgen-mcp"
+  }
+}
