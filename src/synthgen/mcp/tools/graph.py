@@ -34,6 +34,21 @@ def register(mcp: FastMCP, get_transport) -> None:
             return result.get("output", json.dumps(result))
         return str(result)
 
+    def _graph_preamble(extra_imports: str = "", resolve: bool = False) -> str:
+        """Build the LiveGraph preamble, auto-resolving bridges if the scene is dirty."""
+        transport = get_transport()
+        should_resolve = resolve or transport.dirty
+        if transport.dirty:
+            transport.clear_dirty()
+        parts = [_PREAMBLE]
+        parts.append("from synthgen.scenegraph.backend_bpy import LiveGraph\n")
+        if extra_imports:
+            parts.append(extra_imports + "\n")
+        parts.append("g = LiveGraph()\n")
+        if should_resolve:
+            parts.append("g.resolve_attr_bridges()\n")
+        return "".join(parts)
+
     @mcp.tool()
     def graph_nodes() -> str:
         """List all top-level nodes in the scene graph.
@@ -41,9 +56,7 @@ def register(mcp: FastMCP, get_transport) -> None:
         Returns qualified node IDs using the synthgen addressing scheme:
         COL:<name>, OBJ:<name>, OBJ:<name>/MOD:<mod>, NG:<tree>, MAT:<mat>.
         """
-        return _run(_PREAMBLE + textwrap.dedent("""\
-            from synthgen.scenegraph.backend_bpy import LiveGraph
-            g = LiveGraph()
+        return _run(_graph_preamble() + textwrap.dedent("""\
             print(json.dumps(sorted(g.nodes()), indent=2))
         """))
 
@@ -57,9 +70,7 @@ def register(mcp: FastMCP, get_transport) -> None:
         Args:
             node_id: Qualified node ID (e.g. "OBJ:Cube", "MAT:Material", "NG:MyTree").
         """
-        return _run(_PREAMBLE + textwrap.dedent(f"""\
-            from synthgen.scenegraph.backend_bpy import LiveGraph
-            g = LiveGraph()
+        return _run(_graph_preamble() + textwrap.dedent(f"""\
             edges = list(g.neighbors({node_id!r}))
             print(json.dumps([
                 {{"src": e.src, "dst": e.dst, "type": e.type, "tier": e.tier,
@@ -81,10 +92,9 @@ def register(mcp: FastMCP, get_transport) -> None:
                        If omitted, follows all edge types.
         """
         et = repr(set(edge_types)) if edge_types else "None"
-        return _run(_PREAMBLE + textwrap.dedent(f"""\
-            from synthgen.scenegraph.backend_bpy import LiveGraph
-            from synthgen.scenegraph.traverse import reachable
-            g = LiveGraph()
+        return _run(_graph_preamble(
+            extra_imports="from synthgen.scenegraph.traverse import reachable"
+        ) + textwrap.dedent(f"""\
             nodes = reachable(g, {node_id!r}, edge_types={et})
             print(json.dumps(sorted(nodes), indent=2))
         """))
@@ -101,10 +111,9 @@ def register(mcp: FastMCP, get_transport) -> None:
             edge_types: Optional edge type filter.
         """
         et = repr(set(edge_types)) if edge_types else "None"
-        return _run(_PREAMBLE + textwrap.dedent(f"""\
-            from synthgen.scenegraph.backend_bpy import LiveGraph
-            from synthgen.scenegraph.traverse import impact_set
-            g = LiveGraph()
+        return _run(_graph_preamble(
+            extra_imports="from synthgen.scenegraph.traverse import impact_set"
+        ) + textwrap.dedent(f"""\
             nodes = impact_set(g, {node_id!r}, edge_types={et})
             print(json.dumps(sorted(nodes), indent=2))
         """))
@@ -115,16 +124,15 @@ def register(mcp: FastMCP, get_transport) -> None:
 
         Finds all producers (GN Store Named Attribute) and consumers
         (ShaderNodeAttribute) of a named attribute, connected via tier-2
-        bridge edges. Requires resolving bridges first (cooks the depsgraph).
+        bridge edges. Always resolves bridges (cooks the depsgraph).
 
         Args:
             attr_name: The attribute name to trace (e.g. "inst_color", "rust").
         """
-        return _run(_PREAMBLE + textwrap.dedent(f"""\
-            from synthgen.scenegraph.backend_bpy import LiveGraph
-            from synthgen.scenegraph.traverse import attribute_trace
-            g = LiveGraph()
-            g.resolve_attr_bridges()
+        return _run(_graph_preamble(
+            extra_imports="from synthgen.scenegraph.traverse import attribute_trace",
+            resolve=True,
+        ) + textwrap.dedent(f"""\
             trace = attribute_trace(g, {attr_name!r})
             print(json.dumps({{
                 "attribute": {attr_name!r},
@@ -142,9 +150,7 @@ def register(mcp: FastMCP, get_transport) -> None:
 
         Returns all nodes and edges as a structured JSON document.
         """
-        return _run(_PREAMBLE + textwrap.dedent("""\
-            from synthgen.scenegraph.backend_bpy import LiveGraph
-            g = LiveGraph()
+        return _run(_graph_preamble() + textwrap.dedent("""\
             nodes = sorted(g.nodes())
             edges = []
             for nid in nodes:

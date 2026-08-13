@@ -24,6 +24,20 @@ class TransportError(Exception):
 
 
 class TransportBackend(ABC):
+    def __init__(self):
+        self._dirty = False
+
+    @property
+    def dirty(self) -> bool:
+        """True if a Layer 2 mutation happened since the last graph resolve."""
+        return self._dirty
+
+    def mark_dirty(self) -> None:
+        self._dirty = True
+
+    def clear_dirty(self) -> None:
+        self._dirty = False
+
     @abstractmethod
     def execute_python(self, code: str) -> Any:
         """Run Python code in Blender and return the result."""
@@ -47,6 +61,7 @@ class SocketTransport(TransportBackend):
         timeout: float = 180.0,
         connect_timeout: float = 5.0,
     ):
+        super().__init__()
         self._host = host
         self._port = port
         self._timeout = timeout
@@ -146,6 +161,7 @@ class DirectBpyTransport(TransportBackend):
     """Calls bpy directly — for headless Blender or in-process use."""
 
     def __init__(self):
+        super().__init__()
         try:
             import bpy as _bpy
             self._bpy = _bpy

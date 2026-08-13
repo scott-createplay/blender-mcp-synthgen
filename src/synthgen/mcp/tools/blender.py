@@ -19,8 +19,10 @@ if TYPE_CHECKING:
 
 def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
-    def _run(code: str) -> str:
+    def _run(code: str, mutates: bool = False) -> str:
         transport = get_transport()
+        if mutates:
+            transport.mark_dirty()
         result = transport.execute_python(code)
         if isinstance(result, dict):
             return result.get("output", json.dumps(result))
@@ -99,7 +101,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             """)
         else:
             return f"Unsupported object type: {type}"
-        return _run(code)
+        return _run(code, mutates=True)
 
     @mcp.tool()
     def create_material(name: str, base_color: list[float] | None = None) -> str:
@@ -118,7 +120,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             if bsdf:
                 bsdf.inputs["Base Color"].default_value = {color}
             print(f"Created material '{{mat.name}}'")
-        """))
+        """), mutates=True)
 
     @mcp.tool()
     def assign_material(object_name: str, material_name: str) -> str:
@@ -140,7 +142,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 if obj.data and hasattr(obj.data, 'materials'):
                     obj.data.materials.append(mat)
                 print(f"Assigned '{{mat.name}}' to '{{obj.name}}'")
-        """))
+        """), mutates=True)
 
     @mcp.tool()
     def set_parent(child_name: str, parent_name: str) -> str:
@@ -161,7 +163,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             else:
                 child.parent = parent
                 print(f"Parented '{{child.name}}' to '{{parent.name}}'")
-        """))
+        """), mutates=True)
 
     # --- Layer 2: Procedural Authoring --------------------------------------
 
@@ -200,7 +202,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                     mod = obj.modifiers.new({modifier_name!r}, 'NODES')
                     print(f"Added GN modifier '{{mod.name}}' with tree '{{mod.node_group.name if mod.node_group else 'NEW'}}'")
             """)
-        return _run(code)
+        return _run(code, mutates=True)
 
     @mcp.tool()
     def add_node(tree_name: str, node_type: str, name: str | None = None, tree_context: str = "gn") -> str:
@@ -243,7 +245,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                     "inputs": [s.identifier for s in node.inputs],
                     "outputs": [s.identifier for s in node.outputs],
                 }}))
-        """))
+        """), mutates=True)
 
     @mcp.tool()
     def link_sockets(
@@ -295,7 +297,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                     else:
                         tree.links.new(src_sock, dst_sock)
                         print(f"Linked {{src_node.name}}.{{src_sock.identifier}} -> {{dst_node.name}}.{{dst_sock.identifier}}")
-        """))
+        """), mutates=True)
 
     @mcp.tool()
     def set_node_property(
@@ -336,7 +338,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             else:
                 setattr(node, {property_name!r}, {value!r})
                 print(f"Set {{node.name}}.{property_name} = {value!r}")
-        """))
+        """), mutates=True)
 
     @mcp.tool()
     def set_socket_default(
@@ -384,7 +386,275 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 else:
                     sock.default_value = {value!r}
                     print(f"Set {{node.name}}.{socket_name} = {value!r}")
-        """))
+        """), mutates=True)
+
+    # --- Layer 2b: Procedural Authoring (Stage 4) ----------------------------
+
+    @mcp.tool()
+    def expose_parameter(
+        tree_name: str,
+        socket_type: str,
+        socket_name: str,
+        default_value: str | float | list | None = None,
+        min_value: float | None = None,
+        max_value: float | None = None,
+        in_out: str = "INPUT",
+    ) -> str:
+        """Add a socket to a Geometry Nodes group interface for external control.
+
+        This exposes a parameter on the modifier panel so it can be driven,
+        keyframed, or swept across a dataset. Prefer this over hard-coding
+        values inside the node tree.
+
+        Args:
+            tree_name: Name of the GN node group.
+            socket_type: Socket type — "NodeSocketFloat", "NodeSocketInt",
+                        "NodeSocketVector", "NodeSocketColor", "NodeSocketBool",
+                        "NodeSocketMaterial", "NodeSocketObject".
+            socket_name: Display name for the socket.
+            default_value: Optional default value.
+            min_value: Optional minimum (float/int sockets only).
+            max_value: Optional maximum (float/int sockets only).
+            in_out: "INPUT" (default) or "OUTPUT".
+        """
+        lines = [
+            "import bpy, json",
+            f"tree = bpy.data.node_groups.get({tree_name!r})",
+            "if not tree:",
+            f'    print("ERROR: node group {tree_name!r} not found")',
+            "else:",
+            f"    sock = tree.interface.new_socket(name={socket_name!r}, in_out={in_out!r}, socket_type={socket_type!r})",
+        ]
+        if default_value is not None:
+            lines.append(f"    sock.default_value = {default_value!r}")
+        if min_value is not None:
+            lines.append(f"    sock.min_value = {min_value!r}")
+        if max_value is not None:
+            lines.append(f"    sock.max_value = {max_value!r}")
+        lines.append('    print(json.dumps({"name": sock.name, "type": sock.bl_socket_idname, "identifier": sock.identifier}))')
+        return _run("\n".join(lines), mutates=True)
+
+    _ID_COLLECTIONS = {
+        "OBJECT": "objects", "SCENE": "scenes", "MATERIAL": "materials",
+        "WORLD": "worlds", "MESH": "meshes", "CAMERA": "cameras",
+        "LIGHT": "lights", "NODE_TREE": "node_groups",
+    }
+
+    @mcp.tool()
+    def add_driver(
+        target_object: str,
+        target_path: str,
+        expression: str,
+        variables: list[dict] | None = None,
+        target_index: int = -1,
+    ) -> str:
+        """Add a driver expression to an object property.
+
+        Drivers compute property values from expressions, linking properties
+        across objects without manual keyframing. Use for procedural variation
+        that depends on other scene state.
+
+        Args:
+            target_object: Name of the object to receive the driver.
+            target_path: RNA path of the driven property (e.g. "location[0]",
+                        "modifiers[\"GeometryNodes\"][\"Socket_1\"]").
+            expression: Driver expression (e.g. "var * 2", "frame / 24").
+            variables: Optional list of variable definitions, each a dict with:
+                      - name: variable name in the expression
+                      - id_type: ID type ("OBJECT", "SCENE", "MATERIAL", etc.)
+                      - id_name: name of the data-block
+                      - data_path: RNA path to the property
+            target_index: Array index (-1 for non-array properties).
+        """
+        var_lines = []
+        if variables:
+            for v in variables:
+                vname = v.get("name", "var")
+                id_type = v.get("id_type", "OBJECT")
+                collection = _ID_COLLECTIONS.get(id_type, id_type.lower() + "s")
+                var_lines.append(
+                    f"    v = drv.driver.variables.new()\n"
+                    f"    v.name = {vname!r}\n"
+                    f"    v.targets[0].id_type = {id_type!r}\n"
+                    f"    v.targets[0].id = bpy.data.{collection}.get({v.get('id_name', '')!r})\n"
+                    f"    v.targets[0].data_path = {v.get('data_path', '')!r}"
+                )
+
+        code = textwrap.dedent(f"""\
+            import bpy, json
+            obj = bpy.data.objects.get({target_object!r})
+            if not obj:
+                print(f"ERROR: object {target_object!r} not found")
+            else:
+                drv = obj.driver_add({target_path!r}, {target_index})
+                drv.driver.type = 'SCRIPTED'
+                drv.driver.expression = {expression!r}
+        """)
+        if var_lines:
+            code += "\n".join(var_lines) + "\n"
+        code += f'    print(json.dumps({{"target": {target_object!r}, "path": {target_path!r}, "expression": {expression!r}}}))\n'
+        return _run(code, mutates=True)
+
+    @mcp.tool()
+    def wire_attr_bridge(
+        gn_tree_name: str,
+        material_name: str,
+        attr_name: str,
+        data_type: str = "FLOAT",
+        domain: str = "POINT",
+        attribute_type: str = "INSTANCER",
+        gn_writer_name: str | None = None,
+        shader_reader_name: str | None = None,
+    ) -> str:
+        """Wire a GN-to-shader attribute bridge — the core synthetic-data channel.
+
+        Creates a Store Named Attribute node in the GN tree (writer) and an
+        Attribute node in the shader (reader), pre-configured so the three
+        alignment rules are satisfied: name, data type, and domain/attribute_type.
+
+        IMPORTANT: data_type is set BEFORE linking the Value socket (the active
+        socket changes with data_type). See knowledge/attribute_bridge.md.
+
+        Args:
+            gn_tree_name: Name of the Geometry Nodes group.
+            material_name: Name of the material with shader nodes.
+            attr_name: Attribute name string (must match exactly).
+            data_type: GN data type — "FLOAT", "INT", "FLOAT_VECTOR",
+                      "FLOAT_COLOR", "BOOLEAN", etc.
+            domain: GN storage domain — "POINT", "INSTANCE", "FACE", etc.
+            attribute_type: Shader read mode — "INSTANCER" (while instanced),
+                          "GEOMETRY" (after Realize Instances), "OBJECT".
+            gn_writer_name: Optional custom name for the Store Named Attribute node.
+            shader_reader_name: Optional custom name for the Attribute node.
+        """
+        bd = _blender_dir()
+        v = validate_node_type("GeometryNodeStoreNamedAttribute", "gn", blender_dir=bd)
+        if not v.valid:
+            return json.dumps({"error": "grounding", "message": v.message})
+        v = validate_node_type("ShaderNodeAttribute", "shader", blender_dir=bd)
+        if not v.valid:
+            return json.dumps({"error": "grounding", "message": v.message})
+
+        output_map = {
+            "FLOAT": "Fac",
+            "INT": "Fac",
+            "FLOAT_VECTOR": "Vector",
+            "FLOAT_COLOR": "Color",
+            "BOOLEAN": "Fac",
+        }
+        shader_output = output_map.get(data_type, "Fac")
+
+        w_name = f"    writer.name = {gn_writer_name!r}" if gn_writer_name else ""
+        r_name = f"    reader.name = {shader_reader_name!r}" if shader_reader_name else ""
+
+        code = textwrap.dedent(f"""\
+            import bpy, json
+            tree = bpy.data.node_groups.get({gn_tree_name!r})
+            mat = bpy.data.materials.get({material_name!r})
+            if not tree:
+                print(f"ERROR: GN tree {gn_tree_name!r} not found")
+            elif not mat or not mat.use_nodes:
+                print(f"ERROR: material {material_name!r} not found or has no shader nodes")
+            else:
+                # Writer: Store Named Attribute in GN
+                writer = tree.nodes.new('GeometryNodeStoreNamedAttribute')
+                writer.data_type = {data_type!r}
+                writer.domain = {domain!r}
+            {w_name}
+                writer.inputs['Name'].default_value = {attr_name!r}
+
+                # Reader: Attribute in shader
+                stree = mat.node_tree
+                reader = stree.nodes.new('ShaderNodeAttribute')
+                reader.attribute_type = {attribute_type!r}
+                reader.attribute_name = {attr_name!r}
+            {r_name}
+
+                print(json.dumps({{
+                    "attr_name": {attr_name!r},
+                    "writer": {{
+                        "name": writer.name, "tree": {gn_tree_name!r},
+                        "data_type": {data_type!r}, "domain": {domain!r},
+                        "inputs": [s.identifier for s in writer.inputs],
+                        "outputs": [s.identifier for s in writer.outputs],
+                    }},
+                    "reader": {{
+                        "name": reader.name, "tree": mat.name,
+                        "attribute_type": {attribute_type!r},
+                        "shader_output": {shader_output!r},
+                        "outputs": [s.identifier for s in reader.outputs],
+                    }},
+                }}))
+        """)
+        return _run(code, mutates=True)
+
+    @mcp.tool()
+    def wire_compositor_pass(
+        pass_name: str,
+        output_path: str,
+        file_format: str = "PNG",
+        layer_name: str = "ViewLayer",
+    ) -> str:
+        """Wire a render pass to a File Output node in the compositor.
+
+        Creates a File Output node and links the specified render pass
+        to it. Uses scene.compositing_node_group (Blender 5.x API).
+
+        Args:
+            pass_name: Render pass output to connect (e.g. "Image", "Alpha",
+                      or any pass enabled on the view layer).
+            output_path: Base path for the output files.
+            file_format: File format — "PNG", "OPEN_EXR", "JPEG", etc.
+            layer_name: View layer name (default "ViewLayer").
+        """
+        bd = _blender_dir()
+        v = validate_node_type("CompositorNodeRLayers", "compositor", blender_dir=bd)
+        if not v.valid:
+            return json.dumps({"error": "grounding", "message": v.message})
+        v = validate_node_type("CompositorNodeOutputFile", "compositor", blender_dir=bd)
+        if not v.valid:
+            return json.dumps({"error": "grounding", "message": v.message})
+
+        code = textwrap.dedent(f"""\
+            import bpy, json
+            scene = bpy.context.scene
+            scene.use_nodes = True
+            tree = scene.compositing_node_group
+            if tree is None:
+                print("ERROR: compositor node group not found — enable compositing first")
+            else:
+                # Find or create Render Layers node
+                rl = None
+                for n in tree.nodes:
+                    if n.bl_idname == 'CompositorNodeRLayers' and n.layer == {layer_name!r}:
+                        rl = n
+                        break
+                if not rl:
+                    rl = tree.nodes.new('CompositorNodeRLayers')
+                    rl.layer = {layer_name!r}
+
+                # Create File Output node
+                fo = tree.nodes.new('CompositorNodeOutputFile')
+                fo.base_path = {output_path!r}
+                fo.format.file_format = {file_format!r}
+                fo.name = f"File Output ({pass_name!r})"
+
+                # Link the pass
+                src_sock = rl.outputs.get({pass_name!r})
+                if not src_sock:
+                    avail = [s.identifier for s in rl.outputs]
+                    print(json.dumps({{"error": f"pass {pass_name!r} not found", "available": avail}}))
+                else:
+                    tree.links.new(src_sock, fo.inputs[0])
+                    print(json.dumps({{
+                        "render_layers": rl.name,
+                        "file_output": fo.name,
+                        "pass": {pass_name!r},
+                        "path": {output_path!r},
+                        "format": {file_format!r},
+                    }}))
+        """)
+        return _run(code, mutates=True)
 
     @mcp.tool()
     def execute_python(code: str, reason: str = "") -> str:
@@ -399,4 +669,4 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             code: Python code to execute (bpy is available in scope).
             reason: Why structured tools can't handle this. Required for audit trail.
         """
-        return _run(code)
+        return _run(code, mutates=True)
