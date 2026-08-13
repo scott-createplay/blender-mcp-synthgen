@@ -50,6 +50,6 @@ Start here: `README.md` → `ROADMAP.md` → `knowledge/procedural_paradigm.md` 
 
 ## Model
 This work is reasoning-heavy (scene-graph semantics, tier-② resolution, Houdini↔Blender
-mapping) — prefer a **top-tier Opus** model here, and cheaper tiers for mechanical edits per the
-global routing policy in `~/.claude/CLAUDE.md`. Pin the model with `/model` (Claude Code) or the
-`model` key in `.claude/settings.json`; set the exact Opus build you want.
+mapping), so the project pins **`claude-opus-4-6`** in `.claude/settings.json`. Delegate
+mechanical edits to cheaper tiers per the global routing policy in `~/.claude/CLAUDE.md`.
+Override for a session with `/model` if needed.
