@@ -254,3 +254,149 @@ class TestExecutePythonReasonRequired:
         fns, _ = registered_tools
         with pytest.raises(TypeError):
             fns["execute_python"](code="1 + 1")
+
+
+# --- create_node_group / remove_object / remove_collection -------------------
+
+class TestCreateNodeGroup:
+    def test_default_geometry_node_tree(self, registered_tools):
+        fns, transport = registered_tools
+        fns["create_node_group"](name="MyGroup")
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.data.node_groups.new" in code
+        assert "GeometryNodeTree" in code
+        assert "MyGroup" in code
+
+    def test_shader_node_tree_type(self, registered_tools):
+        fns, transport = registered_tools
+        fns["create_node_group"](name="MyShaderGroup", tree_type="ShaderNodeTree")
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.data.node_groups.new" in code
+        assert "ShaderNodeTree" in code
+
+    def test_mutates_true(self, registered_tools):
+        fns, transport = registered_tools
+        fns["create_node_group"](name="MyGroup")
+        transport.mark_dirty.assert_called_once()
+
+
+class TestRemoveObject:
+    def test_generated_code_removes_object(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_object"](object_name="Cube")
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.data.objects.remove" in code
+        assert "Cube" in code
+
+    def test_generated_code_error_path_lists_available_objects(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_object"](object_name="Nonexistent")
+        code = transport.execute_python.call_args[0][0]
+        assert "ERROR" in code
+        assert "Available" in code
+
+    def test_generated_code_unlinks_from_collections(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_object"](object_name="Cube")
+        code = transport.execute_python.call_args[0][0]
+        assert "col.objects.unlink" in code
+        assert "bpy.context.scene.collection.objects.unlink" in code
+
+    def test_mutates_true(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_object"](object_name="Cube")
+        transport.mark_dirty.assert_called_once()
+
+
+class TestRemoveCollection:
+    def test_generated_code_removes_collection(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_collection"](collection_name="MyCollection")
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.data.collections.remove" in code
+        assert "MyCollection" in code
+
+    def test_generated_code_error_path_lists_available_collections(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_collection"](collection_name="Nonexistent")
+        code = transport.execute_python.call_args[0][0]
+        assert "ERROR" in code
+        assert "Available" in code
+
+    def test_remove_children_true_generates_child_removal_code(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_collection"](collection_name="MyCollection", remove_children=True)
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.data.objects.remove" in code
+
+    def test_remove_children_false_by_default(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_collection"](collection_name="MyCollection")
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.data.collections.remove" in code
+
+    def test_mutates_true(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_collection"](collection_name="MyCollection")
+        transport.mark_dirty.assert_called_once()
+
+
+# --- remove_parameter --------------------------------------------------------
+
+class TestRemoveParameter:
+    def test_registered(self, registered_tools):
+        fns, _ = registered_tools
+        assert "remove_parameter" in fns
+
+    def test_generates_interface_remove(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_parameter"](tree_name="Geometry Nodes", socket_identifier="Socket_4")
+        code = transport.execute_python.call_args[0][0]
+        assert "tree.interface.remove" in code
+
+    def test_returns_full_interface(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_parameter"](tree_name="Geometry Nodes", socket_identifier="Socket_4")
+        code = transport.execute_python.call_args[0][0]
+        assert "items_tree" in code
+
+    def test_mutates_true(self, registered_tools):
+        fns, transport = registered_tools
+        fns["remove_parameter"](tree_name="Geometry Nodes", socket_identifier="Socket_4")
+        transport.mark_dirty.assert_called_once()
+
+
+# --- get_modifier_inputs -----------------------------------------------------
+
+@pytest.fixture()
+def verify_tools():
+    mock_mcp = MagicMock()
+    registered = {}
+    def capture_tool():
+        def decorator(fn):
+            registered[fn.__name__] = fn
+            return fn
+        return decorator
+    mock_mcp.tool = capture_tool
+    mock_transport = MagicMock()
+    mock_transport.execute_python.return_value = {"output": "ok"}
+    from synthgen.mcp.tools.verify import register
+    register(mock_mcp, lambda: mock_transport)
+    return registered, mock_transport
+
+
+class TestGetModifierInputs:
+    def test_registered(self, verify_tools):
+        fns, _ = verify_tools
+        assert "get_modifier_inputs" in fns
+
+    def test_version_branching(self, verify_tools):
+        fns, transport = verify_tools
+        fns["get_modifier_inputs"](object_name="Cube", modifier_name="GeometryNodes")
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.app.version" in code
+
+    def test_is_read_only(self, verify_tools):
+        fns, transport = verify_tools
+        fns["get_modifier_inputs"](object_name="Cube", modifier_name="GeometryNodes")
+        transport.mark_dirty.assert_not_called()

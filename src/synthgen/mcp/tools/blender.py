@@ -173,6 +173,62 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 print(f"Parented '{{child.name}}' to '{{parent.name}}'")
         """), mutates=True)
 
+    @mcp.tool()
+    def remove_object(object_name: str) -> str:
+        """Remove an object from the scene. Unlinks from all collections first.
+
+        Args:
+            object_name: Name of the object to remove.
+        """
+        return _run(textwrap.dedent(f"""\
+            import bpy, json
+            obj = bpy.data.objects.get({object_name!r})
+            if not obj:
+                print(f"ERROR: object {object_name!r} not found. Available: {{[o.name for o in bpy.data.objects]}}")
+            else:
+                name = obj.name
+                for col in list(bpy.data.collections):
+                    if obj.name in col.objects:
+                        col.objects.unlink(obj)
+                try:
+                    bpy.context.scene.collection.objects.unlink(obj)
+                except Exception:
+                    pass
+                bpy.data.objects.remove(obj, do_unlink=True)
+                print(json.dumps({{"removed": name}}))
+        """), mutates=True)
+
+    @mcp.tool()
+    def remove_collection(
+        collection_name: str,
+        remove_children: bool = False,
+    ) -> str:
+        """Remove a collection from the scene.
+
+        Args:
+            collection_name: Name of the collection to remove.
+            remove_children: If True, also remove all child objects.
+                            If False (default), objects are only unlinked.
+        """
+        return _run(textwrap.dedent(f"""\
+            import bpy, json
+            col = bpy.data.collections.get({collection_name!r})
+            if not col:
+                print(f"ERROR: collection {collection_name!r} not found. Available: {{[c.name for c in bpy.data.collections]}}")
+            else:
+                name = col.name
+                object_count = len(col.objects)
+                if {remove_children!r}:
+                    for obj in list(col.objects):
+                        bpy.data.objects.remove(obj, do_unlink=True)
+                bpy.data.collections.remove(col)
+                print(json.dumps({{
+                    "removed": name,
+                    "object_count": object_count,
+                    "objects_removed": {remove_children!r},
+                }}))
+        """), mutates=True)
+
     # --- Layer 1b: Scene Setup (Stage 5) ----------------------------------------
 
     @mcp.tool()
@@ -392,6 +448,28 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         return _run("\n".join(lines), mutates=True)
 
     # --- Layer 2: Procedural Authoring --------------------------------------
+
+    @mcp.tool()
+    def create_node_group(
+        name: str,
+        tree_type: str = "GeometryNodeTree",
+    ) -> str:
+        """Create a new node tree (node group). Use this before add_gn_modifier
+        to ensure the tree exists, or to create shader/compositor groups.
+
+        Args:
+            name: Name for the new node tree.
+            tree_type: Tree type — "GeometryNodeTree", "ShaderNodeTree",
+                      or "CompositorNodeTree".
+        """
+        return _run(textwrap.dedent(f"""\
+            import bpy, json
+            try:
+                tree = bpy.data.node_groups.new({name!r}, {tree_type!r})
+                print(json.dumps({{"name": tree.name, "type": tree.bl_idname}}))
+            except Exception as _e:
+                print(f"ERROR: failed to create node group {name!r} of type {tree_type!r}: {{_e}}")
+        """), mutates=True)
 
     @mcp.tool()
     def add_gn_modifier(object_name: str, modifier_name: str = "GeometryNodes", tree_name: str | None = None) -> str:
@@ -682,6 +760,39 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         else:
             lines.append('    print(json.dumps({"name": sock.name, "type": sock.bl_socket_idname, "identifier": sock.identifier}))')
         return _run("\n".join(lines), mutates=True)
+
+    @mcp.tool()
+    def remove_parameter(
+        tree_name: str,
+        socket_identifier: str,
+    ) -> str:
+        """Remove an interface socket from a Geometry Nodes group by its identifier.
+        The inverse of expose_parameter. Returns the updated full interface list.
+
+        Args:
+            tree_name: Name of the GN node group.
+            socket_identifier: Socket identifier (e.g. "Socket_4"), NOT the display name.
+        """
+        return _run(textwrap.dedent(f"""\
+            import bpy, json
+            tree = bpy.data.node_groups.get({tree_name!r})
+            if not tree:
+                print(f"ERROR: node group {tree_name!r} not found")
+            else:
+                item = None
+                for s in tree.interface.items_tree:
+                    if hasattr(s, 'identifier') and s.identifier == {socket_identifier!r}:
+                        item = s
+                        break
+                if not item:
+                    available = [s.identifier for s in tree.interface.items_tree if hasattr(s, 'identifier')]
+                    print(f"ERROR: socket {socket_identifier!r} not found. Available: {{available}}")
+                else:
+                    tree.interface.remove(item)
+                    remaining = [{{"name": s.name, "identifier": s.identifier, "socket_type": s.bl_socket_idname, "in_out": s.in_out}}
+                                 for s in tree.interface.items_tree if hasattr(s, 'identifier')]
+                    print(json.dumps({{"removed": {socket_identifier!r}, "interface": remaining}}))
+        """), mutates=True)
 
     _ID_COLLECTIONS = {
         "OBJECT": "objects", "SCENE": "scenes", "MATERIAL": "materials",
