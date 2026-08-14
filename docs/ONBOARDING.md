@@ -7,7 +7,7 @@ Paste the block below into a fresh VSCode/Cursor agent working in this repo.
 You are continuing work on **blender-synthgen-mcp**, a Python toolkit that helps an AI agent
 generate **3D synthetic data in Blender procedurally** (structural variation from Geometry
 Nodes + per-instance shading variation + compositor passes as ground-truth labels), and that
-composes with existing Blender MCP servers rather than replacing them.
+includes a self-contained Blender addon that runs the MCP server directly inside Blender.
 
 ## First, read these (in order), then summarize the project back to me in 5 bullets
 1. `README.md` and `ROADMAP.md` (what it is, current phase, what's next)
@@ -34,7 +34,8 @@ composes with existing Blender MCP servers rather than replacing them.
 - `src/synthgen/scenegraph/` — `protocol.py` (interface), `traverse.py` (algorithms),
   `backend_snapshot.py` (offline JSON), `backend_bpy.py` (live lazy walker, tier-①)
 - `data/schemas/` — grounded Blender 5.2 + Houdini 22 node schemas (committed on purpose)
-- `knowledge/` — the agent brain; `skill/SKILL.md` — Claude Code skill; `mcp/` — Phase-3 placeholder
+- `knowledge/` — the agent brain; `skill/SKILL.md` — Claude Code skill
+- `addon/synthgen_mcp/` — Blender addon: SSE MCP server + main-thread executor + N-panel UI
 
 ## How to work here
 - Tests are offline (no Blender): `pip install -e ".[dev]" && pytest` (or `PYTHONPATH=src pytest`).

@@ -41,8 +41,7 @@ def graph_tools():
 
     mock_mcp.tool = capture_tool
 
-    from synthgen.mcp.transport import SocketTransport
-    mock_transport = MagicMock(spec=SocketTransport)
+    mock_transport = MagicMock()
     mock_transport._dirty = False
     type(mock_transport).dirty = property(
         lambda self: self._dirty,
@@ -402,19 +401,6 @@ class TestWireCompositorPass:
 # --- 4.5: dirty-flag invalidation -------------------------------------------
 
 class TestDirtyFlag:
-    def test_transport_starts_clean(self):
-        from synthgen.mcp.transport import SocketTransport
-        t = SocketTransport()
-        assert not t.dirty
-
-    def test_mark_and_clear(self):
-        from synthgen.mcp.transport import SocketTransport
-        t = SocketTransport()
-        t.mark_dirty()
-        assert t.dirty
-        t.clear_dirty()
-        assert not t.dirty
-
     def test_mutating_tool_marks_dirty(self, registered_tools):
         fns, transport = registered_tools
         fns["add_node"]("MyTree", "GeometryNodeDistributePointsOnFaces", tree_context="gn")

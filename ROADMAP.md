@@ -13,11 +13,12 @@ From grounded design spike → iterable product. Each phase is independently use
 | **5. Mutation** | graph-diff apply (add node / rewire / retarget) — never destructive scene ops | ✅ subsumed by Phase 3 Layer 2 tools |
 | **6. Synthetic-data pattern atlas** | SOP→GN operation atlas + domain-randomization recipes (per-instance materials, seg/depth/normal passes, camera/light randomization) | ⬜ scoped |
 
-## Phase 3 — MCP layer (current)
+## Phase 3 — MCP layer
 
-**Transport:** composes with ahujasid/blender-mcp via `SocketTransport` (TCP, port 9876).
-Auto-detects `DirectBpyTransport` when bpy is importable. Version-aware schema resolution
-from `bpy.app.version` with closest-match fallback.
+**Transport:** self-contained Blender addon (`addon/synthgen_mcp/`) runs an SSE MCP server
+on port 8400 with direct `bpy` access via a main-thread executor. No external addon
+dependency. Version-aware schema resolution from `bpy.app.version` with closest-match
+fallback.
 
 **Grounding:** enforced, not advisory. Invalid node types, sockets, and settings never
 reach Blender. Fuzzy "did you mean?" suggestions via `difflib.get_close_matches`.
@@ -52,7 +53,7 @@ See `dev_tasks/003_mcp_stabilize_and_ground/HANDOFF.md` for full details.
   gaps (USD stage, PDG) are outside Blender's ontology, recorded as such, never fabricated.
 - **Tier-② edges resolved by cook-then-read** (evaluated `.attributes`) joined with the static
   graph for provenance; each such edge tagged `state_dependent`.
-- **Transport:** ahujasid/blender-mcp (TCP socket, port 9876). Security: advisory/tagged,
+- **Transport:** self-contained Blender addon, SSE on port 8400. Security: advisory/tagged,
   not enforced.
 - **File layout:** `blender.py` consolidates setup + procedural tools (deliberate
   simplification vs original POR's split).

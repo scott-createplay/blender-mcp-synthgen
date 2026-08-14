@@ -41,8 +41,7 @@ def pipeline_tools():
 
     mock_mcp.tool = capture_tool
 
-    from synthgen.mcp.transport import SocketTransport
-    mock_transport = MagicMock(spec=SocketTransport)
+    mock_transport = MagicMock()
     mock_transport._dirty = False
     type(mock_transport).dirty = property(lambda self: self._dirty)
     mock_transport.mark_dirty = lambda: setattr(mock_transport, '_dirty', True)

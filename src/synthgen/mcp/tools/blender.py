@@ -14,7 +14,6 @@ from synthgen.mcp.grounding import validate_node_type, validate_socket, validate
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
-    from synthgen.mcp.transport import TransportBackend
 
 
 def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:

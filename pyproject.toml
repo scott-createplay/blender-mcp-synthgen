@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "blender-synthgen-mcp"
 version = "0.0.1"
-description = "Procedural 3D synthetic-data toolkit for Blender: grounded node schemas, a lazy scene-graph walker, and a Houdini->Blender knowledge base, composable with existing Blender MCP servers."
+description = "Procedural 3D synthetic-data toolkit for Blender: grounded node schemas, a lazy scene-graph walker, and a Houdini->Blender knowledge base — includes a self-contained Blender addon MCP server."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -21,7 +21,6 @@ blender = ["bpy"]
 
 [project.scripts]
 synthgen-schema = "synthgen.schema.query:main"
-synthgen-mcp = "synthgen.mcp.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/synthgen"]
