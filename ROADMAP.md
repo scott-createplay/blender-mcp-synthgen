@@ -8,6 +8,7 @@ From grounded design spike → iterable product. Each phase is independently use
 | **1. Package the spike** | extractors + `schema.query` as clean lib+CLI, `pyproject`, first tests | ✅ done |
 | **2. Scene-graph walker** | protocol + traversal + snapshot backend + fixture tests; tier-① live bpy generators validated headless against Blender 5.2; tier-② `attr_bridge` (cook-then-read); driver edges; adversarial build→validate→diff pipeline | ✅ done |
 | **3. MCP layer** | composable MCP server: schema query (4), graph introspection (6), setup (8), procedural authoring (9), pipeline (4), verify (1), escape hatch (1) — 33 tools total, grounding-enforced, dirty-flag auto-invalidation, provenance snapshots | ✅ done |
+| **3b. Blender addon** | Self-contained Blender addon bundling the MCP server as an SSE endpoint. Install zip → enable → connect from any IDE. Main-thread executor, N-panel UI, build script. | ✅ done |
 | **4. Knowledge → skill/rules** | `skill/SKILL.md` + `.cursor/rules`; the build→verify loop protocol | 🟡 docs exist, packaging pending |
 | **5. Mutation** | graph-diff apply (add node / rewire / retarget) — never destructive scene ops | ✅ subsumed by Phase 3 Layer 2 tools |
 | **6. Synthetic-data pattern atlas** | SOP→GN operation atlas + domain-randomization recipes (per-instance materials, seg/depth/normal passes, camera/light randomization) | ⬜ scoped |
@@ -62,4 +63,4 @@ See `dev_tasks/003_mcp_stabilize_and_ground/HANDOFF.md` for full details.
 Cursor/VSCode with fixtures, **no Blender running**. Only the live bpy backend needs Blender,
 and that is testable headlessly via `pip install bpy` (match the version) in CI.
 
-175 offline tests pass (`pip install -e ".[dev]" && pytest`).
+194 offline tests pass (`pip install -e ".[dev]" && pytest`).

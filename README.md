@@ -1,73 +1,128 @@
 # blender-synthgen-mcp
 
 Procedural **3D synthetic-data** toolkit for Blender — grounded node schemas, a lazy
-scene-graph walker, and a Houdini→Blender knowledge base, designed to **compose with existing
-Blender MCP servers** rather than replace them.
+scene-graph walker, and a Houdini→Blender knowledge base, delivered as a **self-contained
+Blender addon** with an MCP server built in.
 
-The goal is not "an agent that knows Geometry Nodes." It's an agent that generates **synthetic
-training data**: procedural geometry for structural variation + per-instance shading variation
-+ compositor passes as ground-truth labels — i.e. domain randomization, driven by parameters
-and seeds, reproducibly.
+## Quick Install (Blender addon)
 
-## Why this exists (the thesis)
+1. **Download** the latest `synthgen_mcp.zip` from releases (or build it yourself — see below)
+2. **Install** in Blender: Edit → Preferences → Add-ons → Install from Disk → select the zip
+3. **Enable** "Synthgen MCP" — first enable installs dependencies (~15s one-time)
+4. **Connect** from your IDE:
+
+   **Claude Code / Cursor / VS Code** — add to your MCP config:
+   ```json
+   {"synthgen": {"url": "http://localhost:8400/sse"}}
+   ```
+
+That's it. The addon runs an SSE MCP server inside Blender on port 8400. Your IDE connects
+to it and gets 33 grounded tools for procedural 3D work.
+
+### N-panel controls
+
+In the 3D viewport sidebar (N) → "Synthgen MCP" tab:
+- **Start/Stop** — toggle the MCP server
+- **Copy MCP Config** — copies the connection JSON to your clipboard
+- **Server status** — shows running state and port
+
+### Change the port
+
+Edit → Preferences → Add-ons → Synthgen MCP → Port (default 8400)
+
+## What's inside
+
+The addon bundles:
+- **33 MCP tools** across 5 layers (setup, procedural authoring, graph introspection, pipeline, verification)
+- **Grounding data** — extracted node schemas for Blender 5.2 (Geometry Nodes, Shader, Compositor)
+- **Main-thread executor** — marshals all bpy calls safely from the MCP background thread
+
+### Tool layers
+
+| Layer | Tools | Purpose |
+|---|---|---|
+| **Setup** | `create_object`, `create_material`, `assign_material`, `set_parent`, `configure_render`, `import_asset`, `edit_mesh`, `add_keyframes` | Scene building blocks |
+| **Procedural** | `add_gn_modifier`, `add_node`, `link_sockets`, `set_node_property`, `set_socket_default`, `expose_parameter`, `add_driver`, `wire_attr_bridge`, `wire_compositor_pass` | Node graph authoring with grounded identifiers |
+| **Introspection** | `graph_nodes`, `graph_neighbors`, `graph_reachable`, `graph_impact_set`, `graph_attribute_trace`, `graph_snapshot` | Live scene-graph traversal |
+| **Pipeline** | `set_parameter`, `render`, `sweep`, `export_labels` | Parameter sweeps + provenance |
+| **Schema** | `schema_find`, `schema_show`, `schema_socket`, `schema_setting` | Query node schemas |
+| **Verify** | `verify_attribute_exists` | Runtime attribute checks |
+| **Escape hatch** | `execute_python` | Direct bpy access (ungrounded) |
+
+## Why this exists
 
 Transport (a Blender MCP) is a commodity. The moat is **version-exact grounding + a
 build→verify loop**. LLMs hallucinate node/socket identifiers, so we **extract the real schema
 from Blender itself** and give the agent tools to query it — never trusting model memory. The
 same idea, one level up, becomes the **scene-graph walker**: a lazy, pull-based view over the
-live scene so the agent can traverse real relationships to introspect and (later) refactor.
+live scene so the agent can traverse real relationships.
 
 Governing principle (see [`knowledge/procedural_paradigm.md`](knowledge/procedural_paradigm.md)):
-**derive, don't set.** Native Blender is imperative/destructive (like Maya); Houdini is
-declarative dataflow. Blender bolted a procedural island (Geometry Nodes / shader / compositor
-/ drivers) onto an imperative app — the agent must live on that island, because you **cannot
-sweep a hand-edit**, and sweeping a parameter space is the whole job.
+**derive, don't set.** Native Blender is imperative/destructive; the agent must live on the
+procedural island (Geometry Nodes / shader / compositor / drivers), because you **cannot sweep
+a hand-edit**, and sweeping a parameter space is the whole job.
 
-## The four components
+## Build from source
 
-| Component | Path | What it is |
-|---|---|---|
-| **Python package** | `src/synthgen/` | extractors, schema query, scene-graph walker |
-| **Grounding data** | `data/schemas/` | extracted node schemas, versioned by app version |
-| **Knowledge base** | `knowledge/` | the agent's brain — paradigm + Houdini↔Blender crosswalks |
-| **MCP layer** | `mcp/` | thin composable server (Phase 3) — high-level tools over the package |
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
 
-## Composability
+# Run tests (offline — no Blender needed)
+pytest
 
-`blender-synthgen-mcp` is an **additional, composable MCP** that runs alongside an existing
-Blender MCP (e.g. [ahujasid/blender-mcp](https://github.com/ahujasid/blender-mcp) or the
-official one). The existing server owns low-level transport (`execute_python`, render, scene
-info); synthgen owns the high-level semantic tools (`schema.query`, `scenegraph.impact_set`,
-`attribute_trace`). The core logic is a bpy-side Python library, so it's transport-agnostic —
-runnable via an existing MCP's `execute_python`, headless `pip install bpy`, or the GUI.
+# Build the addon zip
+python scripts/build_addon.py
+# → dist/synthgen_mcp.zip
+```
+
+### Development mode
+
+For development without rebuilding the zip each time:
+
+1. Set Blender's `BLENDER_USER_SCRIPTS` environment variable to point to the `addon/` directory
+2. Or symlink `addon/synthgen_mcp/` into Blender's addons folder
+
+The addon auto-detects whether it's running from source (adds `src/` to path) or from a
+built zip (uses bundled files).
 
 ## Grounded against
 
-- **Blender 5.2.0 LTS** — Geometry Nodes (360), Shader (118), Compositor (168) node schemas.
-- **Houdini 22.0.368** — SOP/VOP/COP(Copernicus)/COP2 node schemas (for the crosswalks).
+- **Blender 5.2.0 LTS** — Geometry Nodes (360), Shader (118), Compositor (168) node schemas
+- **Houdini 22.0.368** — SOP/VOP/COP node schemas (for the crosswalks)
 
 Regenerate for another version with the extractors in `src/synthgen/extract/` (run inside
 Blender / `hython`); drop results in `data/schemas/<app-version>/`.
 
-## Quickstart
+## Schema CLI (standalone)
+
+The schema query tool works without Blender:
 
 ```bash
-# query the grounded Blender schema (no Blender needed — reads data/schemas/)
 python -m synthgen.schema.query stats
 python -m synthgen.schema.query show "Store Named Attribute"
 python -m synthgen.schema.query --shader show "Attribute"
 python -m synthgen.schema.query --compositor find "Cryptomatte"
-
-# tests (offline)
-pip install -e ".[dev]" && pytest
 ```
 
-## Status
+## Architecture
 
-Graduated from a grounded design spike into a repo. See
-[`ROADMAP.md`](ROADMAP.md) — Phases 0–1 (scaffold + grounded schema tooling) are in; the
-scene-graph walker, MCP layer, and synthetic-data pattern atlas are next.
+```
+IDE (Claude Code / Cursor / VS Code)
+  │
+  │  MCP protocol over SSE HTTP
+  │
+  ▼
+Blender addon (synthgen_mcp)
+  ├── SSE MCP server (background thread, port 8400)
+  ├── Main-thread executor (bpy.app.timers queue)
+  ├── 33 grounded tools
+  ├── Bundled schema data
+  └── N-panel UI
+```
+
+See [`ROADMAP.md`](ROADMAP.md) for project status and phase details.
 
 ## License
 
-MIT (placeholder — change if you prefer).
+MIT

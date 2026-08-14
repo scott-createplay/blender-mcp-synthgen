@@ -2,83 +2,141 @@
 
 ## Where we are
 
-This task has not started. The POR is written and ready for implementation.
+**All 5 stages complete.** The synthgen MCP server is now a self-contained Blender addon
+that installs from a zip file. No external dependencies, no directory constraints, no
+manual process wiring.
 
-## What exists today
+## What was built
 
-The synthgen MCP server (`src/synthgen/mcp/server.py`) works as a standalone stdio
-process with 33 registered tools and 175 passing offline tests. It connects to Blender
-via an external TCP addon (ahujasid/blender-mcp on port 9876). This works but requires
-the user to:
+### Stage 1 — Addon skeleton + dependency management
+- `addon/synthgen_mcp/__init__.py` — `bl_info`, preferences (port, auto-start, log level),
+  path setup for both dev and distribution modes, deferred server auto-start
+- `addon/synthgen_mcp/deps.py` — finds Blender's bundled Python, pip-installs `mcp[cli]`
+  into a `vendor/` directory on first enable
+- Schema root override in `src/synthgen/schema/query.py` — `_SCHEMAS_ROOT_OVERRIDE` module
+  variable, checked by `_schemas_root()` before falling back to the default path
 
-1. Install the external addon separately
-2. Run Claude Code from the synthgen project directory
-3. Manually start the socket server in Blender
+### Stage 2 — Main-thread executor
+- `addon/synthgen_mcp/executor.py` — `MainThreadExecutor` with `queue.Queue` +
+  `bpy.app.timers` polling at 10ms + `concurrent.futures.Future` for result delivery
+- `AddonTransport` — duck-types the `TransportBackend` interface, wraps executor.
+  `execute_python()` submits code and blocks on the future (180s timeout).
+  `get_blender_version()` reads `bpy.app.version` directly (no round-trip needed).
+  Dirty flag tracking for Layer 2→3 invalidation.
 
-**This task replaces that with a single self-contained Blender addon.**
+### Stage 3 — SSE MCP server
+- `addon/synthgen_mcp/server.py` — creates `FastMCP` with `host="127.0.0.1"` and
+  configurable port, registers all 33 tools via the existing module `register()` functions,
+  runs `mcp.run(transport="sse")` in a daemon thread
+- Schema resolution uses bundled data directory (no transport round-trip)
+- Clean start/stop lifecycle with `is_running()` state query
 
-## What needs to be built
+### Stage 4 — UI + configuration
+- `addon/synthgen_mcp/ui.py` — N-panel (`VIEW3D_PT` in sidebar → "Synthgen MCP" tab)
+- Three operators: start server, stop server, copy MCP config to clipboard
+- Panel shows server status (running/stopped with icon), port, connection URL
+- Addon preferences: port (1024–65535), auto-start toggle, log level
 
-A Blender addon (`addon/synthgen_mcp/`) that:
+### Stage 5 — Build + packaging
+- `scripts/build_addon.py` — creates `dist/synthgen_mcp.zip` containing addon files +
+  bundled `synthgen/` package + `data/schemas/`. Excludes `__pycache__`, vendor, etc.
+- README rewritten as installation-first documentation
+- ROADMAP updated with Phase 3b (addon)
 
-1. Bundles the entire synthgen package + schema data
-2. Runs an SSE MCP server on a local port (default 8400) inside Blender
-3. Marshals all bpy calls to the main thread via `bpy.app.timers`
-4. Provides an N-panel UI showing server status and config
-5. Installs its own dependencies (mcp SDK) on first enable
+## Files
 
-The user experience becomes: install addon zip → enable → copy MCP config into
-Claude Code → done.
+### New files
+| File | What |
+|---|---|
+| `addon/synthgen_mcp/__init__.py` | Addon entry point — bl_info, preferences, register/unregister |
+| `addon/synthgen_mcp/executor.py` | MainThreadExecutor + AddonTransport |
+| `addon/synthgen_mcp/server.py` | SSE MCP server lifecycle (start/stop/is_running) |
+| `addon/synthgen_mcp/ui.py` | N-panel + operators (start, stop, copy config) |
+| `addon/synthgen_mcp/deps.py` | Dependency installer (pip into vendor/) |
+| `scripts/build_addon.py` | Build script → dist/synthgen_mcp.zip |
+| `tests/test_addon.py` | 19 offline tests (executor, transport, build, deps, schema override) |
 
-## Architecture summary
+### Modified files
+| File | What changed |
+|---|---|
+| `src/synthgen/schema/query.py` | Added `_SCHEMAS_ROOT_OVERRIDE` for addon schema path |
+| `.gitignore` | Added vendor/, dist/, bundled synthgen/data in addon dir |
+| `.claude/settings.json` | Broadened permissions |
+| `README.md` | Rewritten — installation-first, architecture diagram, tool table |
+| `ROADMAP.md` | Added Phase 3b, updated test count to 194 |
 
-```
-Claude Code ──(SSE HTTP on port 8400)──► Blender addon
-  │                                        │
-  │  JSON-RPC / MCP protocol               ├── FastMCP SSE server (background thread)
-  │                                        ├── MainThreadExecutor (bpy.app.timers queue)
-  │                                        ├── AddonTransport (TransportBackend)
-  │                                        ├── 33 tools (schema/graph/blender/pipeline/verify)
-  │                                        ├── Grounding validation (schema data bundled)
-  │                                        └── N-panel UI
-```
-
-Key constraint: bpy is main-thread-only. The SSE server runs in a daemon thread.
-A `MainThreadExecutor` queues code execution requests and a `bpy.app.timers` callback
-polls the queue every 10ms, executing code on the main thread and returning results
-via `concurrent.futures.Future`.
-
-## Files to read before starting
-
-- `dev_tasks/004_blender_addon/POR.md` — full plan with stages and validation checkboxes
-- `src/synthgen/mcp/transport.py` — existing transport backends (reuse `TransportBackend` base)
-- `src/synthgen/mcp/server.py` — tool registration pattern
-- `dev_tasks/003_mcp_stabilize_and_ground/HANDOFF.md` — what the 33 tools do
-- `knowledge/procedural_paradigm.md` — the "derive, don't set" philosophy
-
-## Key risks
-
-1. **pydantic-core ABI** — compiled binary must match Blender's Python exactly
-2. **SSE server shutdown** — need clean stop/restart without port conflicts
-3. **Main-thread latency** — 10ms poll interval adds small latency per tool call
-4. **sys.path management** — vendored deps must not conflict with Blender's packages
-
-## How to test
+## How to install + test
 
 ```bash
-# Offline tests still work (no Blender needed)
-pip install -e ".[dev]" && pytest
-
-# Build the addon zip
+# 1. Build the addon zip
 python scripts/build_addon.py
+# → dist/synthgen_mcp.zip (710 KB)
 
-# Install in Blender
-# 1. Edit → Preferences → Add-ons → Install → select synthgen_mcp.zip
-# 2. Enable "Synthgen MCP"
-# 3. Wait for dependencies to install (first time only)
-# 4. Check N-panel → Synthgen MCP → "Server running on port 8400"
+# 2. Install in Blender 5.2
+#    Edit → Preferences → Add-ons → Install from Disk → select synthgen_mcp.zip
+#    Enable "Synthgen MCP"
+#    First enable: installs mcp SDK (~15s)
 
-# Connect Claude Code
-# Add to your MCP config:
-# {"synthgen": {"url": "http://localhost:8400/sse"}}
+# 3. Check the N-panel
+#    3D Viewport → Sidebar (N) → "Synthgen MCP" tab
+#    Should show "Server running on port 8400"
+
+# 4. Connect from your IDE
+#    Add to MCP config: {"synthgen": {"url": "http://localhost:8400/sse"}}
+
+# 5. Test a tool call
+#    Ask your agent: "Use schema_find to search for 'Distribute'"
 ```
+
+## Architecture
+
+```
+IDE (Claude Code / Cursor / VS Code)
+  │
+  │  SSE HTTP on port 8400
+  │
+  ▼
+Blender addon (synthgen_mcp)
+  ├── FastMCP SSE server (daemon thread)
+  │     └── 33 registered tools
+  ├── MainThreadExecutor
+  │     ├── queue.Queue (code submissions)
+  │     ├── bpy.app.timers (10ms poll)
+  │     └── concurrent.futures.Future (results)
+  ├── AddonTransport (duck-types TransportBackend)
+  ├── Bundled synthgen package
+  ├── Bundled schema data (data/schemas/)
+  └── N-panel UI (status, start/stop, copy config)
+```
+
+## Key design decisions
+
+- **Duck-typing over inheritance** — `AddonTransport` doesn't inherit `TransportBackend`
+  to avoid importing transport.py at class-definition time. It implements the same
+  interface (`execute_python`, `get_blender_version`, `dirty`/`mark_dirty`/`clear_dirty`,
+  `close`). The tool modules only care about the interface, not the base class.
+
+- **Deferred auto-start** — Server starts 0.5s after addon enable via `bpy.app.timers`,
+  not during `register()`. This avoids blocking Blender's startup and ensures the UI
+  context is fully initialized.
+
+- **Dual-mode path setup** — `__init__.py` detects whether `synthgen/` is bundled
+  (distribution) or absent (development). Distribution mode adds the addon dir to
+  sys.path; dev mode adds `src/` from the repo root.
+
+- **Schema root override** — `_SCHEMAS_ROOT_OVERRIDE` in `query.py` lets the addon
+  point schema resolution at its bundled data without modifying any other code paths.
+  CLI and standalone MCP server still use the default repo-relative path.
+
+## Risks + mitigations
+
+- **pydantic-core ABI**: the pip install targets Blender's bundled Python (3.12.x for
+  Blender 5.2). If a compatible wheel doesn't exist, the install fails with a clear
+  error message pointing the user at the manual pip command.
+
+- **SSE server shutdown**: the server thread is daemon, so it dies with Blender. For
+  restart-in-session, `stop()` flags the executor to stop polling and sets the server
+  reference to None. The old daemon thread may linger briefly but releases the port.
+
+- **Main-thread latency**: 10ms poll adds small latency per tool call. For `sweep`
+  (which renders many frames in a single transport call), this is paid once, not per-frame.

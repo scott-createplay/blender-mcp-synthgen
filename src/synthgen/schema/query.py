@@ -28,8 +28,12 @@ import sys
 _DEFAULT_BLENDER_DIR = "blender-5.2"
 _KEY_TO_FILE = {"gn": "gn.json", "shader": "shader.json", "compositor": "compositor.json"}
 
+_SCHEMAS_ROOT_OVERRIDE: str | None = None
+
 
 def _schemas_root() -> str:
+    if _SCHEMAS_ROOT_OVERRIDE is not None:
+        return _SCHEMAS_ROOT_OVERRIDE
     here = os.path.dirname(os.path.abspath(__file__))
     return os.path.normpath(os.path.join(here, "..", "..", "..", "data", "schemas"))
 
