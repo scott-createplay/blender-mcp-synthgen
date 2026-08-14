@@ -25,13 +25,31 @@ bl_info = {
 _addon_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+def _setup_vendor(vendor: str) -> None:
+    """Add vendor/ and its pywin32 subdirs to sys.path + DLL search path."""
+    if not os.path.isdir(vendor):
+        return
+    if vendor not in sys.path:
+        sys.path.insert(0, vendor)
+    if sys.platform == "win32":
+        for subdir in ("pywin32_system32", "win32", "win32\\lib"):
+            p = os.path.join(vendor, subdir)
+            if os.path.isdir(p):
+                if p not in sys.path:
+                    sys.path.insert(0, p)
+                if subdir == "pywin32_system32":
+                    try:
+                        os.add_dll_directory(p)
+                    except (OSError, AttributeError):
+                        pass
+
+
 def _setup_paths():
     """Add synthgen package and vendor deps to sys.path."""
     vendor = os.path.join(_addon_dir, "vendor")
     bundled_synthgen = os.path.join(_addon_dir, "synthgen")
 
-    if vendor not in sys.path and os.path.isdir(vendor):
-        sys.path.insert(0, vendor)
+    _setup_vendor(vendor)
 
     if os.path.isdir(bundled_synthgen):
         if _addon_dir not in sys.path:
