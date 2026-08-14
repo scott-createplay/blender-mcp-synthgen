@@ -80,13 +80,30 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 if not mod:
                     print(f"ERROR: modifier {modifier_name!r} not found on {{obj.name}}")
                 else:
-                    mod[{socket_identifier!r}] = {value!r}
-                    print(json.dumps({{
-                        "object": obj.name,
-                        "modifier": mod.name,
-                        "socket": {socket_identifier!r},
-                        "value": {value!r},
-                    }}))
+                    ver = bpy.app.version
+                    ok = False
+                    if ver >= (5, 0, 0):
+                        # Blender 5.x: GN modifier inputs live under mod.properties.inputs
+                        inp = getattr(mod.properties.inputs, {socket_identifier!r}, None)
+                        if inp is not None:
+                            inp.default_value = {value!r}
+                            ok = True
+                        else:
+                            print(f"ERROR: socket {socket_identifier!r} not found on mod.properties.inputs (Blender {{ver[0]}}.{{ver[1]}}, tried 5.x API)")
+                    else:
+                        # Blender 4.x: id-property API
+                        try:
+                            mod[{socket_identifier!r}] = {value!r}
+                            ok = True
+                        except Exception as _e:
+                            print(f"ERROR: failed to set socket {socket_identifier!r} via mod[...] (Blender {{ver[0]}}.{{ver[1]}}, tried 4.x API): {{_e}}")
+                    if ok:
+                        print(json.dumps({{
+                            "object": obj.name,
+                            "modifier": mod.name,
+                            "socket": {socket_identifier!r},
+                            "value": {value!r},
+                        }}))
         """)
         return _run(code, mutates=True)
 

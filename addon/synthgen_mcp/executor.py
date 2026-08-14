@@ -12,7 +12,7 @@ import io
 import logging
 import queue
 import threading
-from concurrent.futures import Future
+from concurrent.futures import Future, TimeoutError as FutureTimeoutError
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -125,9 +125,15 @@ class AddonTransport:
     def clear_dirty(self) -> None:
         self._dirty = False
 
-    def execute_python(self, code: str) -> Any:
+    def execute_python(self, code: str, timeout: float = 30) -> Any:
         future = self._executor.submit(code)
-        return future.result(timeout=180)
+        try:
+            return future.result(timeout=timeout)
+        except FutureTimeoutError:
+            raise RuntimeError(
+                f"Blender did not respond within {timeout}s — the main thread may be "
+                "blocked; the session likely needs a restart."
+            ) from None
 
     def get_blender_version(self) -> tuple[int, int, int]:
         if _HAS_BPY:

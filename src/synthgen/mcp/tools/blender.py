@@ -663,13 +663,24 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             "else:",
             f"    sock = tree.interface.new_socket(name={socket_name!r}, in_out={in_out!r}, socket_type={socket_type!r})",
         ]
-        if default_value is not None:
-            lines.append(f"    sock.default_value = {default_value!r}")
-        if min_value is not None:
-            lines.append(f"    sock.min_value = {min_value!r}")
-        if max_value is not None:
-            lines.append(f"    sock.max_value = {max_value!r}")
-        lines.append('    print(json.dumps({"name": sock.name, "type": sock.bl_socket_idname, "identifier": sock.identifier}))')
+        has_assignments = default_value is not None or min_value is not None or max_value is not None
+        if has_assignments:
+            lines.append("    try:")
+            if default_value is not None:
+                if socket_type == "NodeSocketInt":
+                    lines.append(f"        sock.default_value = int({default_value!r})")
+                else:
+                    lines.append(f"        sock.default_value = {default_value!r}")
+            if min_value is not None:
+                lines.append(f"        sock.min_value = {min_value!r}")
+            if max_value is not None:
+                lines.append(f"        sock.max_value = {max_value!r}")
+            lines.append('        print(json.dumps({"name": sock.name, "type": sock.bl_socket_idname, "identifier": sock.identifier}))')
+            lines.append("    except Exception as _e:")
+            lines.append("        tree.interface.remove(sock)")
+            lines.append('        print(json.dumps({"error": "expose_parameter failed", "message": str(_e), "rolled_back": True}))')
+        else:
+            lines.append('    print(json.dumps({"name": sock.name, "type": sock.bl_socket_idname, "identifier": sock.identifier}))')
         return _run("\n".join(lines), mutates=True)
 
     _ID_COLLECTIONS = {
@@ -895,13 +906,16 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         return _run(code, mutates=True)
 
     @mcp.tool()
-    def execute_python(code: str, reason: str = "") -> str:
+    def execute_python(code: str, reason: str) -> str:
         """Execute arbitrary Python code in Blender. ESCAPE HATCH — use structured
         tools (create_object, add_node, link_sockets) when possible.
 
         This operation is tagged as UNGROUNDED. The scene graph may change in ways
         the introspection layer can't track. A full re-resolve will be triggered
         on the next graph query.
+
+        `reason` is REQUIRED (no default) — every call must state why structured
+        tools can't handle this, for the audit trail.
 
         Args:
             code: Python code to execute (bpy is available in scope).
