@@ -64,44 +64,44 @@ class TestConfigureRender:
     def test_sets_engine(self, registered_tools):
         fns, transport = registered_tools
         fns["configure_render"](engine="CYCLES")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.render.engine = 'CYCLES'" in code
 
     def test_sets_resolution(self, registered_tools):
         fns, transport = registered_tools
         fns["configure_render"](resolution_x=1920, resolution_y=1080)
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.render.resolution_x = 1920" in code
         assert "scene.render.resolution_y = 1080" in code
 
     def test_sets_samples_cycles(self, registered_tools):
         fns, transport = registered_tools
         fns["configure_render"](samples=256)
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.cycles.samples = 256" in code
 
     def test_sets_output_path(self, registered_tools):
         fns, transport = registered_tools
         fns["configure_render"](output_path="/tmp/render_")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.render.filepath = '/tmp/render_'" in code
 
     def test_sets_file_format(self, registered_tools):
         fns, transport = registered_tools
         fns["configure_render"](file_format="OPEN_EXR")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.render.image_settings.file_format = 'OPEN_EXR'" in code
 
     def test_sets_film_transparent(self, registered_tools):
         fns, transport = registered_tools
         fns["configure_render"](film_transparent=True)
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.render.film_transparent = True" in code
 
     def test_omitted_params_not_in_code(self, registered_tools):
         fns, transport = registered_tools
         fns["configure_render"](engine="CYCLES")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "resolution_x" not in code
         assert "filepath" not in code
 
@@ -119,38 +119,38 @@ class TestImportAsset:
     def test_auto_detect_fbx(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/model.fbx")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "import_scene.fbx" in code
 
     def test_auto_detect_obj(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/model.obj")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "wm.obj_import" in code
 
     def test_auto_detect_glb(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/model.glb")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "import_scene.gltf" in code
 
     def test_auto_detect_stl(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/model.stl")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "wm.stl_import" in code
 
     def test_blend_import(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/file.blend")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.libraries.load" in code
         assert "link=False" in code
 
     def test_blend_link(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/file.blend", link=True)
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "link=True" in code
 
     def test_unsupported_format(self, registered_tools):
@@ -163,13 +163,13 @@ class TestImportAsset:
     def test_explicit_format_override(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/data.bin", file_format="FBX")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "import_scene.fbx" in code
 
     def test_tracks_imported_objects(self, registered_tools):
         fns, transport = registered_tools
         fns["import_asset"](filepath="/path/model.fbx")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "before = set(bpy.data.objects.keys())" in code
         assert "after = set(bpy.data.objects.keys())" in code
 
@@ -182,7 +182,7 @@ class TestEditMesh:
     def test_subdivide(self, registered_tools):
         fns, transport = registered_tools
         fns["edit_mesh"](object_name="Cube", operation="subdivide", params={"cuts": 3})
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.ops.mesh.subdivide(number_cuts=3)" in code
         assert "mode_set(mode='EDIT')" in code
         assert "mode_set(mode='OBJECT')" in code
@@ -190,19 +190,19 @@ class TestEditMesh:
     def test_bevel(self, registered_tools):
         fns, transport = registered_tools
         fns["edit_mesh"](object_name="Cube", operation="bevel", params={"width": 0.2, "segments": 3})
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.ops.mesh.bevel(width=0.2, segments=3)" in code
 
     def test_triangulate(self, registered_tools):
         fns, transport = registered_tools
         fns["edit_mesh"](object_name="Cube", operation="triangulate")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "quads_convert_to_tris" in code
 
     def test_merge_by_distance(self, registered_tools):
         fns, transport = registered_tools
         fns["edit_mesh"](object_name="Cube", operation="merge_by_distance", params={"threshold": 0.01})
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "remove_doubles(threshold=0.01)" in code
 
     def test_unknown_operation(self, registered_tools):
@@ -215,13 +215,13 @@ class TestEditMesh:
     def test_select_all_before_op(self, registered_tools):
         fns, transport = registered_tools
         fns["edit_mesh"](object_name="Cube", operation="subdivide")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "select_all(action='SELECT')" in code
 
     def test_default_params(self, registered_tools):
         fns, transport = registered_tools
         fns["edit_mesh"](object_name="Cube", operation="subdivide")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "number_cuts=1" in code
 
 
@@ -237,7 +237,7 @@ class TestAddKeyframes:
             data_path="location",
             keyframes=[{"frame": 1, "value": [0, 0, 0]}, {"frame": 24, "value": [5, 0, 0]}],
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.frame_set(1)" in code
         assert "scene.frame_set(24)" in code
         assert "keyframe_insert" in code
@@ -249,7 +249,7 @@ class TestAddKeyframes:
             data_path="data.energy",
             keyframes=[{"frame": 1, "value": 100.0}],
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "exec(" in code
 
     def test_simple_path_uses_setattr(self, registered_tools):
@@ -259,7 +259,7 @@ class TestAddKeyframes:
             data_path="location",
             keyframes=[{"frame": 1, "value": [0, 0, 0]}],
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "setattr(" in code
 
     def test_index_parameter(self, registered_tools):
@@ -270,7 +270,7 @@ class TestAddKeyframes:
             keyframes=[{"frame": 1, "value": 5.0}],
             index=0,
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "index=0" in code
 
 

@@ -69,8 +69,8 @@ class TestExposeParameter:
             socket_type="NodeSocketFloat",
             socket_name="Scale",
         )
-        transport.execute_python.assert_called_once()
-        code = transport.execute_python.call_args[0][0]
+        transport.execute_python.assert_called()
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "tree.interface.new_socket" in code
         assert "'Scale'" in code
         assert "'NodeSocketFloat'" in code
@@ -84,7 +84,7 @@ class TestExposeParameter:
             socket_name="Scale",
             default_value=1.5,
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "sock.default_value = 1.5" in code
 
     def test_min_max(self, registered_tools):
@@ -96,7 +96,7 @@ class TestExposeParameter:
             min_value=0.0,
             max_value=10.0,
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "sock.min_value = 0.0" in code
         assert "sock.max_value = 10.0" in code
 
@@ -108,7 +108,7 @@ class TestExposeParameter:
             socket_name="Result",
             in_out="OUTPUT",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "'OUTPUT'" in code
 
     def test_marks_dirty(self, registered_tools):
@@ -135,8 +135,8 @@ class TestAddDriver:
             target_path="location[0]",
             expression="frame / 24",
         )
-        transport.execute_python.assert_called_once()
-        code = transport.execute_python.call_args[0][0]
+        transport.execute_python.assert_called()
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "obj.driver_add('location[0]'" in code
         assert "drv.driver.expression = 'frame / 24'" in code
         assert "drv.driver.type = 'SCRIPTED'" in code
@@ -154,7 +154,7 @@ class TestAddDriver:
                 "data_path": "location[0]",
             }],
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "drv.driver.variables.new()" in code
         assert "v.name = 'var'" in code
         assert "v.targets[0].id_type = 'OBJECT'" in code
@@ -174,7 +174,7 @@ class TestAddDriver:
                 "data_path": "node_tree.nodes[0].inputs[0].default_value",
             }],
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.materials.get('MyMat')" in code
 
     def test_print_inside_else_block(self, registered_tools):
@@ -185,7 +185,7 @@ class TestAddDriver:
             target_path="location[0]",
             expression="frame",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         lines = code.split("\n")
         print_lines = [l for l in lines if "json.dumps" in l]
         assert len(print_lines) == 1
@@ -215,8 +215,8 @@ class TestWireAttrBridge:
             material_name="MyMat",
             attr_name="rust",
         )
-        transport.execute_python.assert_called_once()
-        code = transport.execute_python.call_args[0][0]
+        transport.execute_python.assert_called()
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "GeometryNodeStoreNamedAttribute" in code
         assert "ShaderNodeAttribute" in code
 
@@ -229,7 +229,7 @@ class TestWireAttrBridge:
             attr_name="rust",
             data_type="FLOAT_COLOR",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         dt_pos = code.index("writer.data_type")
         name_pos = code.index("writer.inputs['Name']")
         assert dt_pos < name_pos
@@ -242,7 +242,7 @@ class TestWireAttrBridge:
             material_name="MyMat",
             attr_name="color_var",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "reader.attribute_name = 'color_var'" in code
 
     def test_attribute_type_default_instancer(self, registered_tools):
@@ -252,7 +252,7 @@ class TestWireAttrBridge:
             material_name="MyMat",
             attr_name="rust",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "reader.attribute_type = 'INSTANCER'" in code
 
     def test_attribute_type_geometry(self, registered_tools):
@@ -263,7 +263,7 @@ class TestWireAttrBridge:
             attr_name="rust",
             attribute_type="GEOMETRY",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "reader.attribute_type = 'GEOMETRY'" in code
 
     def test_output_map_float(self, registered_tools):
@@ -274,7 +274,7 @@ class TestWireAttrBridge:
             attr_name="rust",
             data_type="FLOAT",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert '"shader_output": \'Fac\'' in code
 
     def test_output_map_color(self, registered_tools):
@@ -285,7 +285,7 @@ class TestWireAttrBridge:
             attr_name="inst_col",
             data_type="FLOAT_COLOR",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert '"shader_output": \'Color\'' in code
 
     def test_output_map_vector(self, registered_tools):
@@ -296,7 +296,7 @@ class TestWireAttrBridge:
             attr_name="dir",
             data_type="FLOAT_VECTOR",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert '"shader_output": \'Vector\'' in code
 
     def test_custom_node_names(self, registered_tools):
@@ -308,7 +308,7 @@ class TestWireAttrBridge:
             gn_writer_name="RustWriter",
             shader_reader_name="RustReader",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "writer.name = 'RustWriter'" in code
         assert "reader.name = 'RustReader'" in code
 
@@ -345,8 +345,8 @@ class TestWireCompositorPass:
             pass_name="Image",
             output_path="/tmp/renders/",
         )
-        transport.execute_python.assert_called_once()
-        code = transport.execute_python.call_args[0][0]
+        transport.execute_python.assert_called()
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "CompositorNodeRLayers" in code
         assert "CompositorNodeOutputFile" in code
 
@@ -357,7 +357,7 @@ class TestWireCompositorPass:
             pass_name="Image",
             output_path="/tmp/renders/",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "scene.compositing_node_group" in code
         assert "scene.node_tree" not in code
 
@@ -368,7 +368,7 @@ class TestWireCompositorPass:
             output_path="/tmp/renders/",
             file_format="OPEN_EXR",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "'OPEN_EXR'" in code
 
     def test_custom_layer(self, registered_tools):
@@ -378,7 +378,7 @@ class TestWireCompositorPass:
             output_path="/tmp/renders/",
             layer_name="CustomLayer",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "'CustomLayer'" in code
 
     def test_grounding_validates_compositor_nodes(self, registered_tools):

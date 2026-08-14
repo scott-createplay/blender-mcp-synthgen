@@ -138,7 +138,7 @@ class TestGroundingInTools:
     def test_add_node_allows_valid_type(self, tools):
         fns, transport = tools
         fns["add_node"]("MyTree", "GeometryNodeDistributePointsOnFaces", tree_context="gn")
-        transport.execute_python.assert_called_once()
+        transport.execute_python.assert_called()
 
     def test_set_socket_default_rejects_bad_socket(self, tools):
         fns, transport = tools
@@ -154,4 +154,4 @@ class TestGroundingInTools:
     def test_set_socket_default_skips_grounding_without_type(self, tools):
         fns, transport = tools
         fns["set_socket_default"]("MyTree", "MyNode", "FakeSocket", 1.0, tree_context="gn")
-        transport.execute_python.assert_called_once()
+        transport.execute_python.assert_called()

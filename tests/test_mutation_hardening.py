@@ -198,7 +198,7 @@ class TestExposeParameterRollback:
             socket_name="Count",
             default_value=3.7,
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "int(" in code
 
     def test_float_socket_default_value_not_coerced_with_int(self, registered_tools):
@@ -209,7 +209,7 @@ class TestExposeParameterRollback:
             socket_name="Radius",
             default_value=1.5,
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         # No int() coercion should be applied for a non-int socket type.
         assert "sock.default_value = int(" not in code
 
@@ -223,7 +223,7 @@ class TestExposeParameterRollback:
             min_value=0,
             max_value=10,
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "try:" in code
         assert "except Exception" in code
         assert "tree.interface.remove(sock)" in code
@@ -236,7 +236,7 @@ class TestExposeParameterRollback:
             socket_type="NodeSocketFloat",
             socket_name="Radius",
         )
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "try:" not in code
         assert "tree.interface.remove(sock)" not in code
 
@@ -262,7 +262,7 @@ class TestCreateNodeGroup:
     def test_default_geometry_node_tree(self, registered_tools):
         fns, transport = registered_tools
         fns["create_node_group"](name="MyGroup")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.node_groups.new" in code
         assert "GeometryNodeTree" in code
         assert "MyGroup" in code
@@ -270,7 +270,7 @@ class TestCreateNodeGroup:
     def test_shader_node_tree_type(self, registered_tools):
         fns, transport = registered_tools
         fns["create_node_group"](name="MyShaderGroup", tree_type="ShaderNodeTree")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.node_groups.new" in code
         assert "ShaderNodeTree" in code
 
@@ -284,21 +284,21 @@ class TestRemoveObject:
     def test_generated_code_removes_object(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_object"](object_name="Cube")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.objects.remove" in code
         assert "Cube" in code
 
     def test_generated_code_error_path_lists_available_objects(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_object"](object_name="Nonexistent")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "ERROR" in code
         assert "Available" in code
 
     def test_generated_code_unlinks_from_collections(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_object"](object_name="Cube")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "col.objects.unlink" in code
         assert "bpy.context.scene.collection.objects.unlink" in code
 
@@ -312,27 +312,27 @@ class TestRemoveCollection:
     def test_generated_code_removes_collection(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_collection"](collection_name="MyCollection")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.collections.remove" in code
         assert "MyCollection" in code
 
     def test_generated_code_error_path_lists_available_collections(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_collection"](collection_name="Nonexistent")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "ERROR" in code
         assert "Available" in code
 
     def test_remove_children_true_generates_child_removal_code(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_collection"](collection_name="MyCollection", remove_children=True)
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.objects.remove" in code
 
     def test_remove_children_false_by_default(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_collection"](collection_name="MyCollection")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "bpy.data.collections.remove" in code
 
     def test_mutates_true(self, registered_tools):
@@ -351,13 +351,13 @@ class TestRemoveParameter:
     def test_generates_interface_remove(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_parameter"](tree_name="Geometry Nodes", socket_identifier="Socket_4")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "tree.interface.remove" in code
 
     def test_returns_full_interface(self, registered_tools):
         fns, transport = registered_tools
         fns["remove_parameter"](tree_name="Geometry Nodes", socket_identifier="Socket_4")
-        code = transport.execute_python.call_args[0][0]
+        code = transport.execute_python.call_args_list[0][0][0]
         assert "items_tree" in code
 
     def test_mutates_true(self, registered_tools):
@@ -400,3 +400,186 @@ class TestGetModifierInputs:
         fns, transport = verify_tools
         fns["get_modifier_inputs"](object_name="Cube", modifier_name="GeometryNodes")
         transport.mark_dirty.assert_not_called()
+
+
+# --- 4.1: evaluate_object ----------------------------------------------------
+
+class TestEvaluateObject:
+    def test_registered(self, verify_tools):
+        fns, _ = verify_tools
+        assert "evaluate_object" in fns
+
+    def test_generated_code_uses_evaluated_depsgraph(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Cube")
+        code = transport.execute_python.call_args[0][0]
+        assert "evaluated_depsgraph_get" in code
+
+    def test_generated_code_checks_modifier_warnings(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Cube")
+        code = transport.execute_python.call_args[0][0]
+        assert "node_warnings" in code
+
+    def test_is_read_only(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Cube")
+        transport.mark_dirty.assert_not_called()
+
+
+# --- 4.2: graph tools surface unresolved modifier state ----------------------
+
+@pytest.fixture()
+def graph_tools():
+    """Register graph tools with mock MCP + transport, return (tools_dict, transport)."""
+    mock_mcp = MagicMock()
+    registered = {}
+
+    def capture_tool():
+        def decorator(fn):
+            registered[fn.__name__] = fn
+            return fn
+        return decorator
+
+    mock_mcp.tool = capture_tool
+
+    mock_transport = MagicMock()
+    mock_transport._dirty = False
+    type(mock_transport).dirty = property(lambda self: self._dirty)
+    mock_transport.mark_dirty = lambda: setattr(mock_transport, '_dirty', True)
+    mock_transport.clear_dirty = lambda: setattr(mock_transport, '_dirty', False)
+    mock_transport.execute_python.return_value = {"output": "[]"}
+
+    from synthgen.mcp.tools.graph import register
+    register(mock_mcp, lambda: mock_transport)
+    return registered, mock_transport
+
+
+class TestGraphUnresolvedState:
+    def test_graph_nodes_checks_for_unresolved_modifiers(self, graph_tools):
+        fns, transport = graph_tools
+        fns["graph_nodes"]()
+        code = transport.execute_python.call_args[0][0]
+        assert "node_group is None" in code
+
+    def test_graph_neighbors_checks_for_unresolved_modifiers(self, graph_tools):
+        fns, transport = graph_tools
+        fns["graph_neighbors"](node_id="OBJ:Cube/MOD:GeometryNodes")
+        code = transport.execute_python.call_args[0][0]
+        assert "node_group is None" in code
+
+
+# --- 4.3: auto-save sidecar after mutations ----------------------------------
+
+class TestAutoSave:
+    def test_mutation_triggers_second_execute_python_call_for_save(self, registered_tools):
+        fns, transport = registered_tools
+        fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
+        assert transport.execute_python.call_count == 2
+
+    def test_autosave_code_uses_save_as_mainfile_with_copy(self, registered_tools):
+        fns, transport = registered_tools
+        fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
+        save_code = transport.execute_python.call_args_list[1][0][0]
+        assert "bpy.ops.wm.save_as_mainfile" in save_code
+        assert "copy=True" in save_code
+
+    def test_autosave_failure_does_not_break_tool_result(self, registered_tools):
+        fns, transport = registered_tools
+        transport.execute_python.side_effect = [
+            {"output": "ok"},
+            RuntimeError("save failed"),
+        ]
+        result = fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
+        assert "ok" in result
+
+    def test_read_only_tool_does_not_trigger_autosave(self, verify_tools):
+        fns, transport = verify_tools
+        fns["get_modifier_inputs"](object_name="Cube", modifier_name="GeometryNodes")
+        assert transport.execute_python.call_count == 1
+
+
+# --- Stage 3.1: expose_parameter returns full interface ---------------------
+
+class TestExposeParameterFullInterface:
+    def test_full_interface_dumped_with_assignments(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Geometry Nodes",
+            socket_type="NodeSocketFloat",
+            socket_name="Radius",
+            default_value=1.0,
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "items_tree" in code
+        assert '"interface":' in code
+
+    def test_full_interface_dumped_without_assignments(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Geometry Nodes",
+            socket_type="NodeSocketFloat",
+            socket_name="Radius",
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "items_tree" in code
+        assert '"interface":' in code
+
+
+# --- Stage 3.2: add_gn_modifier always creates + assigns tree ---------------
+
+class TestAddGnModifierCreatesTree:
+    def test_generated_code_creates_new_tree_when_no_tree_name(self, registered_tools):
+        fns, transport = registered_tools
+        fns["add_gn_modifier"](object_name="Cube")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "bpy.data.node_groups.new" in code
+        assert "NodeGroupInput" in code
+        assert "NodeGroupOutput" in code
+        assert '"tree_name"' in code
+
+    def test_generated_code_includes_tree_name_with_existing_tree(self, registered_tools):
+        fns, transport = registered_tools
+        fns["add_gn_modifier"](object_name="Cube", tree_name="ExistingTree")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert '"tree_name"' in code
+
+
+# --- Stage 3.3: expose_parameter refreshes bound modifiers ------------------
+
+class TestExposeParameterRefreshesModifiers:
+    def test_refresh_loop_present(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Geometry Nodes",
+            socket_type="NodeSocketFloat",
+            socket_name="Radius",
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "bpy.data.objects" in code
+        assert "_obj.modifiers" in code
+        assert "show_viewport" in code
+        assert '"refreshed_modifiers"' in code
+
+    def test_refresh_loop_present_with_assignments(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Geometry Nodes",
+            socket_type="NodeSocketFloat",
+            socket_name="Radius",
+            default_value=1.0,
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "bpy.data.objects" in code
+        assert "_obj.modifiers" in code
+        assert "show_viewport" in code
+        assert '"refreshed_modifiers"' in code
+
+
+# --- Stage 3.4: ungrounded cost note appended to mutation results -----------
+
+class TestUngroundedCostInMutations:
+    def test_mutation_result_mentions_graph_cache_reresolve(self, registered_tools):
+        fns, _ = registered_tools
+        result = fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
+        assert "re-resolve" in result or "graph cache" in result

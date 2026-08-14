@@ -58,7 +58,17 @@ def register(mcp: FastMCP, get_transport) -> None:
         COL:<name>, OBJ:<name>, OBJ:<name>/MOD:<mod>, NG:<tree>, MAT:<mat>.
         """
         return _run(_graph_preamble() + textwrap.dedent("""\
-            print(json.dumps(sorted(g.nodes()), indent=2))
+            nodes = sorted(g.nodes())
+            # Surface unresolved modifiers
+            unresolved = []
+            for obj in bpy.data.objects:
+                for mod in obj.modifiers:
+                    if mod.type == 'NODES' and mod.node_group is None:
+                        unresolved.append(f"MOD:{mod.name} on OBJ:{obj.name} -> node_group: None (unresolved)")
+            if unresolved:
+                for u in unresolved:
+                    nodes.append(u)
+            print(json.dumps(nodes, indent=2))
         """))
 
     @mcp.tool()
@@ -76,11 +86,25 @@ def register(mcp: FastMCP, get_transport) -> None:
         """
         return _run(_graph_preamble() + textwrap.dedent(f"""\
             edges = list(g.neighbors({node_id!r}))
-            print(json.dumps([
+            result = [
                 {{"src": e.src, "dst": e.dst, "type": e.type, "tier": e.tier,
                  "state_dependent": e.state_dependent, "data": e.data}}
                 for e in edges
-            ], indent=2))
+            ]
+            if not result and {node_id!r}.startswith('OBJ:') and '/MOD:' in {node_id!r}:
+                _obj_name, _mod_name = {node_id!r}.split('/MOD:', 1)
+                _obj_name = _obj_name[len('OBJ:'):]
+                _obj = bpy.data.objects.get(_obj_name)
+                _mod = _obj.modifiers.get(_mod_name) if _obj else None
+                if _mod is not None and _mod.type == 'NODES' and _mod.node_group is None:
+                    print(json.dumps({{
+                        "diagnostic": f"MOD:{{_mod.name}} on OBJ:{{_obj.name}} -> node_group: None (unresolved)",
+                        "edges": [],
+                    }}, indent=2))
+                else:
+                    print(json.dumps(result, indent=2))
+            else:
+                print(json.dumps(result, indent=2))
         """))
 
     @mcp.tool()

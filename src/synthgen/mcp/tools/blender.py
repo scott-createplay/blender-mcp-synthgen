@@ -24,8 +24,33 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             transport.mark_dirty()
         result = transport.execute_python(code)
         if isinstance(result, dict):
-            return result.get("output", json.dumps(result))
-        return str(result)
+            output = result.get("output", json.dumps(result))
+        else:
+            output = str(result)
+        if mutates:
+            try:
+                save_code = textwrap.dedent("""\
+                    import bpy, time
+                    fp = bpy.data.filepath
+                    if fp:
+                        save_path = fp.rsplit('.', 1)[0] + '.autosave.blend'
+                    else:
+                        import tempfile, os
+                        save_path = os.path.join(tempfile.gettempdir(), 'synthgen_autosave.blend')
+                    start = time.monotonic()
+                    bpy.ops.wm.save_as_mainfile(filepath=save_path, copy=True)
+                    elapsed = time.monotonic() - start
+                    if elapsed > 2.0:
+                        print(f"WARNING: auto-save took {elapsed:.1f}s — consider disabling for large scenes")
+                """)
+                transport.execute_python(save_code)
+            except Exception:
+                pass  # auto-save is best-effort
+            output = output.rstrip()
+            if output:
+                output += "\n"
+            output += '[note: mutation invalidated the graph cache — it will re-resolve on the next graph query]'
+        return output
 
     def _blender_dir() -> str | None:
         return get_blender_dir() if get_blender_dir else None
@@ -486,7 +511,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         """
         if tree_name:
             code = textwrap.dedent(f"""\
-                import bpy
+                import bpy, json
                 obj = bpy.data.objects.get({object_name!r})
                 if not obj:
                     print(f"ERROR: object {object_name!r} not found")
@@ -495,17 +520,32 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                     tree = bpy.data.node_groups.get({tree_name!r})
                     if tree:
                         mod.node_group = tree
-                    print(f"Added GN modifier '{{mod.name}}' with tree '{{mod.node_group.name if mod.node_group else 'NEW'}}'")
+                    print(json.dumps({{
+                        "modifier": mod.name,
+                        "tree_name": mod.node_group.name if mod.node_group else None,
+                        "object": obj.name,
+                    }}))
             """)
         else:
             code = textwrap.dedent(f"""\
-                import bpy
+                import bpy, json
                 obj = bpy.data.objects.get({object_name!r})
                 if not obj:
                     print(f"ERROR: object {object_name!r} not found")
                 else:
                     mod = obj.modifiers.new({modifier_name!r}, 'NODES')
-                    print(f"Added GN modifier '{{mod.name}}' with tree '{{mod.node_group.name if mod.node_group else 'NEW'}}'")
+                    tree = bpy.data.node_groups.new(f"{modifier_name}_tree", 'GeometryNodeTree')
+                    mod.node_group = tree
+                    # Add Group Input/Output nodes
+                    gi = tree.nodes.new('NodeGroupInput')
+                    gi.location = (-200, 0)
+                    go = tree.nodes.new('NodeGroupOutput')
+                    go.location = (200, 0)
+                    print(json.dumps({{
+                        "modifier": mod.name,
+                        "tree_name": tree.name,
+                        "object": obj.name,
+                    }}))
             """)
         return _run(code, mutates=True)
 
@@ -741,6 +781,24 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             "else:",
             f"    sock = tree.interface.new_socket(name={socket_name!r}, in_out={in_out!r}, socket_type={socket_type!r})",
         ]
+        def _success_print(indent: str) -> str:
+            return (
+                f'{indent}print(json.dumps({{"name": sock.name, "type": sock.bl_socket_idname, '
+                '"identifier": sock.identifier, "refreshed_modifiers": refreshed, '
+                '"interface": [{"name": s.name, "identifier": s.identifier, "socket_type": s.bl_socket_idname, '
+                '"in_out": s.in_out} for s in tree.interface.items_tree if hasattr(s, \'identifier\')]}))'
+            )
+
+        def _refresh_lines(indent: str) -> list[str]:
+            return [
+                f"{indent}refreshed = 0",
+                f"{indent}for _obj in bpy.data.objects:",
+                f"{indent}    for _mod in _obj.modifiers:",
+                f"{indent}        if getattr(_mod, 'node_group', None) == tree:",
+                f"{indent}            _mod.show_viewport = _mod.show_viewport",
+                f"{indent}            refreshed += 1",
+            ]
+
         has_assignments = default_value is not None or min_value is not None or max_value is not None
         if has_assignments:
             lines.append("    try:")
@@ -753,12 +811,14 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 lines.append(f"        sock.min_value = {min_value!r}")
             if max_value is not None:
                 lines.append(f"        sock.max_value = {max_value!r}")
-            lines.append('        print(json.dumps({"name": sock.name, "type": sock.bl_socket_idname, "identifier": sock.identifier}))')
+            lines.extend(_refresh_lines("        "))
+            lines.append(_success_print("        "))
             lines.append("    except Exception as _e:")
             lines.append("        tree.interface.remove(sock)")
             lines.append('        print(json.dumps({"error": "expose_parameter failed", "message": str(_e), "rolled_back": True}))')
         else:
-            lines.append('    print(json.dumps({"name": sock.name, "type": sock.bl_socket_idname, "identifier": sock.identifier}))')
+            lines.extend(_refresh_lines("    "))
+            lines.append(_success_print("    "))
         return _run("\n".join(lines), mutates=True)
 
     @mcp.tool()

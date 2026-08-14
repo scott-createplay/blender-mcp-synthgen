@@ -112,3 +112,44 @@ def register(mcp: FastMCP, get_transport) -> None:
                                         inputs.append({{"identifier": ident, "name": item.name, "type": item.bl_socket_idname, "value": None}})
                     print(json.dumps({{"object": {object_name!r}, "modifier": {modifier_name!r}, "inputs": inputs}}))
         """))
+
+    @mcp.tool()
+    def evaluate_object(object_name: str) -> str:
+        """Evaluate an object through the depsgraph and return its mesh stats,
+        attributes, and modifier warnings. One call replaces multiple diagnostic
+        round-trips when debugging why a GN setup produces no output.
+
+        Args:
+            object_name: Name of the object to evaluate.
+        """
+        return _run(textwrap.dedent(f"""\
+            import bpy, json
+            obj = bpy.data.objects.get({object_name!r})
+            if not obj:
+                print(json.dumps({{"error": f"object {object_name!r} not found", "available": [o.name for o in bpy.data.objects]}}))
+            else:
+                dg = bpy.context.evaluated_depsgraph_get()
+                eval_obj = obj.evaluated_get(dg)
+                result = {{
+                    "name": obj.name,
+                    "type": obj.type,
+                }}
+                if eval_obj.data and hasattr(eval_obj.data, 'vertices'):
+                    mesh = eval_obj.data
+                    result["verts"] = len(mesh.vertices)
+                    result["edges"] = len(mesh.edges)
+                    result["faces"] = len(mesh.polygons)
+                    result["attributes"] = [a.name for a in mesh.attributes]
+                # Modifier info
+                mods = []
+                for mod in obj.modifiers:
+                    mod_info = {{"name": mod.name, "type": mod.type}}
+                    if hasattr(mod, 'node_group'):
+                        mod_info["node_group"] = mod.node_group.name if mod.node_group else None
+                    if hasattr(mod, 'node_warnings'):
+                        mod_info["warnings"] = [str(w) for w in mod.node_warnings]
+                    mods.append(mod_info)
+                result["modifiers"] = mods
+                result["modifier_count"] = len(mods)
+                print(json.dumps(result))
+        """))
