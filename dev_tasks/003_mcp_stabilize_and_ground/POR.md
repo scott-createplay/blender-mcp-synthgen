@@ -230,19 +230,68 @@ Layer 2 mutations set a flag; next Layer 3 query auto-resolves tier-2 edges.
 
 #### 5.1 Remaining Layer 1 tools
 
-`edit_mesh`, `import_asset`, `configure_render`, `add_keyframes`.
+Four tools added to `src/synthgen/mcp/tools/blender.py`, following the existing
+`_run(code, mutates=True)` pattern. Each carries procedural-first agent guidance.
+
+| Tool | Purpose | Implementation |
+|---|---|---|
+| `configure_render` | Set render engine, resolution, samples, output path, format | Targets `scene.render.*`, `scene.cycles.*`, `scene.eevee.*`. No grounding needed. |
+| `import_asset` | Import files (FBX, OBJ, GLB, BLEND append/link) | Wraps `bpy.ops.import_scene.*` / `bpy.ops.wm.append`. Agent guidance: input to procedural workflows. |
+| `edit_mesh` | Basic mesh ops (subdivide, bevel, extrude, inset, dissolve, merge) | bmesh in edit mode. Agent guidance: last resort for base mesh, prefer GN geometry. |
+| `add_keyframes` | Insert keyframes on object/material properties | `obj.keyframe_insert(data_path, frame)`. Supports array indices for vectors. |
+
+**Files:** `src/synthgen/mcp/tools/blender.py`
+
+**Order:** `configure_render` → `import_asset` → `edit_mesh` → `add_keyframes`
 
 #### 5.2 Layer 4 tools
 
-`set_parameter`, `render`, `sweep`, `export_labels`.
+Four tools in a new `src/synthgen/mcp/tools/pipeline.py` module. Layer 4 is orchestration
+(parameter setting, rendering, sweeping, label export) — structurally different from the
+Layer 1/2 mutation tools in `blender.py`. Registered in `server.py` alongside existing modules.
+
+| Tool | Purpose | Implementation |
+|---|---|---|
+| `set_parameter` | Set a GN modifier input socket value | `obj.modifiers["name"]["Socket_N"] = value`. Marks dirty. |
+| `render` | Render current scene to file | `bpy.ops.render.render(write_still=True)`. Resolves dirty flag first. Saves provenance snapshot alongside output. |
+| `sweep` | Iterate parameter combos × seeds, render each | Takes parameter specs + seed range. Single Python script with nested loops. Provenance per sample. Returns manifest. |
+| `export_labels` | Extract ground-truth metadata from rendered outputs | Reads compositor File Output paths, verifies passes, returns manifest mapping outputs to semantic roles. |
+
+**Files:** `src/synthgen/mcp/tools/pipeline.py`, `src/synthgen/mcp/server.py`
+
+**Order:** `set_parameter` → `render` → `sweep` → `export_labels`
 
 #### 5.3 Provenance snapshots
 
-`render` and `sweep` auto-save graph state alongside outputs.
+`render` and `sweep` capture graph state alongside outputs for reproducibility.
+
+- Extract `graph_snapshot`'s code-generation logic into a shared helper in `graph.py`
+  (`_snapshot_code()`) so `pipeline.py` can call it without duplicating the preamble.
+- `render` saves `<output_path>.provenance.json` next to the rendered image.
+- `sweep` saves one provenance snapshot per sample (tier-2 edges and parameter values
+  differ per combination).
+- The dirty flag is resolved before each render (same `_graph_preamble` pattern).
+
+**Files:** `src/synthgen/mcp/tools/graph.py`, `src/synthgen/mcp/tools/pipeline.py`
 
 #### 5.4 Agent guidance in all tool descriptions
 
-Procedural-first nudges in every tool description, not just `create_object`.
+Retrofit procedural-first nudges into every tool docstring (currently only Stage 4 tools
+have them). Pattern per layer:
+
+- **Layer 1:** "Use as input to procedural workflows. Prefer GN-driven geometry/materials."
+- **Layer 2:** "Part of the procedural authoring pipeline. Wire graphs, don't set imperatively."
+- **Schema:** "Query before authoring. Socket label ≠ identifier."
+- **Graph:** "Introspect before mutating. Verify your pipeline is wired correctly."
+- **Escape hatch:** Already adequate, minor polish.
+
+**Files:** `src/synthgen/mcp/tools/blender.py`, `src/synthgen/mcp/tools/schema.py`,
+`src/synthgen/mcp/tools/graph.py`, `src/synthgen/mcp/tools/verify.py`
+
+#### 5.5 Tests
+
+New `tests/test_stage5_tools.py` following the Stage 4 test pattern (mock transport,
+capture generated code strings, validate parameter handling).
 
 ---
 
@@ -250,12 +299,31 @@ Procedural-first nudges in every tool description, not just `create_object`.
 
 #### 6.1 Update ROADMAP.md
 
-Reflect Phase 3 in-progress, POR decisions locked, ahujasid transport chosen.
+- Phase 3 state → "✅ done"
+- Update tool count (25 → 33) and test count
+- Replace "Remaining (Stages 5–6)" with final tool inventory by layer
+
+**Files:** `ROADMAP.md`
 
 #### 6.2 Reconcile file layout
 
-Document the `blender.py` consolidation (vs POR's `procedural.py`/`setup.py` split) as
-a deliberate simplification. Update POR or add a note.
+Document the three-module tool split:
+- `blender.py` — Layer 1 (setup) + Layer 2 (procedural authoring)
+- `pipeline.py` — Layer 4 (orchestration: parameters, render, sweep, labels)
+- `graph.py` — Layer 3 (introspection)
+- `schema.py` — schema query
+- `verify.py` — runtime verification
+
+Update POR with a note explaining `pipeline.py` as a deliberate addition for Layer 4,
+consistent with the `blender.py` consolidation decision (Layer 4 is orchestration, not
+mutation, so it belongs in its own module).
+
+#### 6.3 Update HANDOFF.md
+
+Add Stage 5–6 completion details, updated file inventory, and final tool count.
+
+**Files:** `ROADMAP.md`, `dev_tasks/003_mcp_stabilize_and_ground/POR.md`,
+`dev_tasks/003_mcp_stabilize_and_ground/HANDOFF.md`
 
 ---
 
@@ -285,13 +353,17 @@ a deliberate simplification. Update POR or add a note.
 - [x] `expose_parameter`, `add_driver`, `wire_attr_bridge`, `wire_compositor_pass` tools
 - [x] Dirty-flag invalidation wired between Layer 2 and Layer 3
 
-### Stage 5
-- [ ] Layer 1 complete (7 tools), Layer 4 complete (4 tools)
-- [ ] Provenance snapshots on render/sweep
+### Stage 5 ✓
+- [x] `configure_render`, `import_asset`, `edit_mesh`, `add_keyframes` tools registered
+- [x] `set_parameter`, `render`, `sweep`, `export_labels` in `pipeline.py`
+- [x] Provenance snapshots saved alongside render/sweep outputs
+- [x] Agent guidance in all tool descriptions
+- [x] Tests for all Stage 5 tools pass (62 new tests)
 
-### Stage 6
-- [ ] ROADMAP.md updated
-- [ ] File layout documented
+### Stage 6 ✓
+- [x] ROADMAP.md reflects Phase 3 complete with final tool/test counts
+- [x] File layout documented (three-module split)
+- [x] HANDOFF.md updated with Stage 5–6 completion
 
 ## Decisions locked
 
@@ -301,3 +373,5 @@ a deliberate simplification. Update POR or add a note.
   original POR, documented)
 - **Grounding:** enforced, not advisory. Invalid identifiers never reach bpy.
 - **Schema resolution:** dynamic from `bpy.app.version` with fallback to closest match
+- **Layer 4 file:** `pipeline.py` — orchestration tools (set_parameter, render, sweep,
+  export_labels) live in their own module, not in `blender.py`

@@ -105,7 +105,10 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
     @mcp.tool()
     def create_material(name: str, base_color: list[float] | None = None) -> str:
-        """Create a new material with shader nodes enabled.
+        """For per-instance material variation, use attribute bridges (wire_attr_bridge)
+        driven by Geometry Nodes rather than creating many materials.
+
+        Create a new material with shader nodes enabled.
 
         Args:
             name: Material name.
@@ -124,7 +127,10 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
     @mcp.tool()
     def assign_material(object_name: str, material_name: str) -> str:
-        """Assign a material to an object.
+        """For procedural material assignment across instances, use a GN Set Material
+        node rather than manual per-object assignment.
+
+        Assign a material to an object.
 
         Args:
             object_name: Name of the target object.
@@ -146,7 +152,10 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
     @mcp.tool()
     def set_parent(child_name: str, parent_name: str) -> str:
-        """Set the parent of an object.
+        """For procedural parenting or instancing hierarchies, prefer Geometry Nodes
+        Instance on Points over manual parent relationships.
+
+        Set the parent of an object.
 
         Args:
             child_name: Name of the child object.
@@ -165,11 +174,230 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 print(f"Parented '{{child.name}}' to '{{parent.name}}'")
         """), mutates=True)
 
+    # --- Layer 1b: Scene Setup (Stage 5) ----------------------------------------
+
+    @mcp.tool()
+    def configure_render(
+        engine: str | None = None,
+        resolution_x: int | None = None,
+        resolution_y: int | None = None,
+        samples: int | None = None,
+        output_path: str | None = None,
+        file_format: str | None = None,
+        film_transparent: bool | None = None,
+        use_compositor: bool | None = None,
+    ) -> str:
+        """Configure render settings for the scene. Call before render/sweep
+        to set engine, resolution, and output format. Only specified parameters
+        are changed — omitted ones keep their current values.
+
+        Args:
+            engine: Render engine — "CYCLES", "BLENDER_EEVEE_NEXT", "BLENDER_WORKBENCH".
+            resolution_x: Output width in pixels.
+            resolution_y: Output height in pixels.
+            samples: Render samples (Cycles: path tracing samples, Eevee: ignored).
+            output_path: Default output file path.
+            file_format: Output format — "PNG", "OPEN_EXR", "JPEG", "BMP", "TIFF".
+            film_transparent: True for transparent background (alpha channel).
+            use_compositor: Whether to run compositor nodes after rendering.
+        """
+        lines = ["import bpy, json", "scene = bpy.context.scene", "changed = {}"]
+        if engine is not None:
+            lines.append(f"scene.render.engine = {engine!r}")
+            lines.append(f'changed["engine"] = {engine!r}')
+        if resolution_x is not None:
+            lines.append(f"scene.render.resolution_x = {resolution_x!r}")
+            lines.append(f'changed["resolution_x"] = {resolution_x!r}')
+        if resolution_y is not None:
+            lines.append(f"scene.render.resolution_y = {resolution_y!r}")
+            lines.append(f'changed["resolution_y"] = {resolution_y!r}')
+        if samples is not None:
+            lines.append("if scene.render.engine == 'CYCLES':")
+            lines.append(f"    scene.cycles.samples = {samples!r}")
+            lines.append("else:")
+            lines.append(f"    scene.eevee.taa_render_samples = {samples!r}")
+            lines.append(f'changed["samples"] = {samples!r}')
+        if output_path is not None:
+            lines.append(f"scene.render.filepath = {output_path!r}")
+            lines.append(f'changed["output_path"] = {output_path!r}')
+        if file_format is not None:
+            lines.append(f"scene.render.image_settings.file_format = {file_format!r}")
+            lines.append(f'changed["file_format"] = {file_format!r}')
+        if film_transparent is not None:
+            lines.append(f"scene.render.film_transparent = {film_transparent!r}")
+            lines.append(f'changed["film_transparent"] = {film_transparent!r}')
+        if use_compositor is not None:
+            lines.append(f"scene.render.use_compositing = {use_compositor!r}")
+            lines.append(f'changed["use_compositor"] = {use_compositor!r}')
+        lines.append('print(json.dumps({"changed": changed}))')
+        return _run("\n".join(lines), mutates=True)
+
+    @mcp.tool()
+    def import_asset(
+        filepath: str,
+        file_format: str = "auto",
+        link: bool = False,
+    ) -> str:
+        """Import an external 3D asset file into the scene. Use as an input to
+        procedural workflows — imported geometry should feed into Geometry Nodes,
+        not be manually edited in place.
+
+        Args:
+            filepath: Path to the file on the Blender host filesystem.
+            file_format: File format — "auto" (detect from extension), "FBX", "OBJ",
+                        "GLB", "GLTF", "STL", "PLY", "ABC", "BLEND".
+            link: For BLEND files, True to link (reference) instead of append (copy).
+        """
+        fmt = file_format.upper()
+        if fmt == "AUTO":
+            fmt = filepath.rsplit(".", 1)[-1].upper() if "." in filepath else ""
+
+        if fmt == "BLEND":
+            code = textwrap.dedent(f"""\
+                import bpy, json
+                before = set(bpy.data.objects.keys())
+                with bpy.data.libraries.load({filepath!r}, link={link!r}) as (data_from, data_to):
+                    data_to.objects = data_from.objects
+                for obj in data_to.objects:
+                    if obj is not None:
+                        bpy.context.collection.objects.link(obj)
+                after = set(bpy.data.objects.keys())
+                imported = sorted(after - before)
+                print(json.dumps({{"imported_objects": imported, "link": {link!r}}}))
+            """)
+            return _run(code, mutates=True)
+
+        import_ops = {
+            "FBX": f"bpy.ops.import_scene.fbx(filepath={filepath!r})",
+            "OBJ": f"bpy.ops.wm.obj_import(filepath={filepath!r})",
+            "GLB": f"bpy.ops.import_scene.gltf(filepath={filepath!r})",
+            "GLTF": f"bpy.ops.import_scene.gltf(filepath={filepath!r})",
+            "STL": f"bpy.ops.wm.stl_import(filepath={filepath!r})",
+            "PLY": f"bpy.ops.wm.ply_import(filepath={filepath!r})",
+            "ABC": f"bpy.ops.wm.alembic_import(filepath={filepath!r})",
+        }
+        op_call = import_ops.get(fmt)
+        if not op_call:
+            return json.dumps({
+                "error": f"unsupported file_format: {fmt or file_format}",
+                "available": list(import_ops) + ["BLEND"],
+            })
+
+        code = textwrap.dedent(f"""\
+            import bpy, json
+            before = set(bpy.data.objects.keys())
+            {op_call}
+            after = set(bpy.data.objects.keys())
+            imported = sorted(after - before)
+            print(json.dumps({{"imported_objects": imported}}))
+        """)
+        return _run(code, mutates=True)
+
+    @mcp.tool()
+    def edit_mesh(
+        object_name: str,
+        operation: str,
+        params: dict | None = None,
+    ) -> str:
+        """Apply a mesh editing operation to an object. This is a last-resort tool
+        for base mesh authoring that feeds into procedural workflows. For variation
+        across a dataset, prefer Geometry Nodes (add_gn_modifier, add_node).
+
+        Args:
+            object_name: Name of the mesh object to edit.
+            operation: Operation — "subdivide", "extrude_faces", "bevel", "inset",
+                      "dissolve_edges", "triangulate", "merge_by_distance".
+            params: Optional parameters dict. Keys depend on operation:
+                   - subdivide: {"cuts": int}
+                   - bevel: {"width": float, "segments": int}
+                   - inset: {"thickness": float, "depth": float}
+                   - dissolve_edges: {}
+                   - triangulate: {}
+                   - merge_by_distance: {"threshold": float}
+        """
+        p = params or {}
+        op_map = {
+            "subdivide": f"bpy.ops.mesh.subdivide(number_cuts={p.get('cuts', 1)!r})",
+            "extrude_faces": (
+                "bpy.ops.mesh.extrude_region_move("
+                f"TRANSFORM_OT_translate={{'value': (0, 0, {p.get('distance', 0.5)!r})}})"
+            ),
+            "bevel": f"bpy.ops.mesh.bevel(width={p.get('width', 0.1)!r}, segments={p.get('segments', 1)!r})",
+            "inset": f"bpy.ops.mesh.inset(thickness={p.get('thickness', 0.1)!r}, depth={p.get('depth', 0.0)!r})",
+            "dissolve_edges": "bpy.ops.mesh.dissolve_edges()",
+            "triangulate": "bpy.ops.mesh.quads_convert_to_tris()",
+            "merge_by_distance": f"bpy.ops.mesh.remove_doubles(threshold={p.get('threshold', 0.001)!r})",
+        }
+        op_call = op_map.get(operation)
+        if not op_call:
+            return json.dumps({"error": f"unknown operation: {operation}", "available": list(op_map)})
+
+        code = textwrap.dedent(f"""\
+            import bpy, json
+            obj = bpy.data.objects.get({object_name!r})
+            if not obj or obj.type != 'MESH':
+                print(f"ERROR: mesh object {object_name!r} not found")
+            else:
+                bpy.context.view_layer.objects.active = obj
+                obj.select_set(True)
+                bpy.ops.object.mode_set(mode='EDIT')
+                bpy.ops.mesh.select_all(action='SELECT')
+                {op_call}
+                bpy.ops.object.mode_set(mode='OBJECT')
+                print(json.dumps({{"object": obj.name, "operation": {operation!r}}}))
+        """)
+        return _run(code, mutates=True)
+
+    @mcp.tool()
+    def add_keyframes(
+        object_name: str,
+        data_path: str,
+        keyframes: list[dict],
+        index: int = -1,
+    ) -> str:
+        """Insert keyframes on an object property. Use for camera motion, light
+        variation, or any animated parameter in a synthetic data sweep.
+
+        Args:
+            object_name: Name of the object to keyframe.
+            data_path: RNA path of the property (e.g. "location", "rotation_euler",
+                      "scale", 'data.energy' for lights, 'data.lens' for cameras).
+            keyframes: List of keyframe dicts, each with "frame" (int) and "value"
+                      (float or list for vector properties).
+            index: Array index for vector properties (0=X, 1=Y, 2=Z). Use -1 for
+                  scalar properties or to keyframe all components.
+        """
+        lines = [
+            "import bpy, json",
+            f"obj = bpy.data.objects.get({object_name!r})",
+            "scene = bpy.context.scene",
+            "if not obj:",
+            f'    print(f"ERROR: object {object_name!r} not found")',
+            "else:",
+            "    inserted = []",
+        ]
+        for kf in keyframes:
+            frame = kf.get("frame")
+            value = kf.get("value")
+            lines.append(f"    scene.frame_set({frame!r})")
+            if "." in data_path:
+                assign_str = f"obj.{data_path} = {value!r}"
+                lines.append(f"    exec({assign_str!r})")
+            else:
+                lines.append(f"    setattr(obj, {data_path!r}, {value!r})")
+            lines.append(f"    obj.keyframe_insert(data_path={data_path!r}, index={index!r}, frame={frame!r})")
+            lines.append(f"    inserted.append({{'frame': {frame!r}, 'value': {value!r}}})")
+        lines.append(
+            f'    print(json.dumps({{"object": obj.name, "data_path": {data_path!r}, "inserted": inserted}}))'
+        )
+        return _run("\n".join(lines), mutates=True)
+
     # --- Layer 2: Procedural Authoring --------------------------------------
 
     @mcp.tool()
     def add_gn_modifier(object_name: str, modifier_name: str = "GeometryNodes", tree_name: str | None = None) -> str:
-        """Add a Geometry Nodes modifier to an object.
+        """Start of the procedural pipeline. Add a Geometry Nodes modifier, then use
+        add_node/link_sockets to build the graph.
 
         Creates a new node group if tree_name is not specified, or assigns
         an existing one.
@@ -206,7 +434,10 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
     @mcp.tool()
     def add_node(tree_name: str, node_type: str, name: str | None = None, tree_context: str = "gn") -> str:
-        """Add a node to a node tree by grounded type ID.
+        """Core procedural authoring tool. Use schema_find/schema_show first to get
+        the correct grounded node_type identifier.
+
+        Add a node to a node tree by grounded type ID.
 
         Use schema_find or schema_show first to get the correct node_type.
         The node_type must be a real Blender node identifier — this tool
@@ -256,7 +487,10 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         to_socket: str,
         tree_context: str = "gn",
     ) -> str:
-        """Connect two sockets in a node tree.
+        """Wire procedural connections between nodes. Use socket identifiers (from
+        schema_show), not display labels.
+
+        Connect two sockets in a node tree.
 
         Use socket IDENTIFIERS (from schema_show), not display labels.
 
@@ -308,7 +542,9 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         tree_context: str = "gn",
         node_type: str | None = None,
     ) -> str:
-        """Set a property on a node (e.g. data_type, domain, operation).
+        """Configure node behavior within a procedural graph.
+
+        Set a property on a node (e.g. data_type, domain, operation).
 
         Args:
             tree_name: Node tree name.
@@ -350,7 +586,10 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         tree_context: str = "gn",
         node_type: str | None = None,
     ) -> str:
-        """Set the default value of a socket on a node.
+        """Set default values in a procedural graph. For values that should vary
+        across a dataset, use expose_parameter instead.
+
+        Set the default value of a socket on a node.
 
         Args:
             tree_name: Node tree name.

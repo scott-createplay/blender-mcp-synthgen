@@ -2,11 +2,11 @@
 
 ## Where we are
 
-Stages 1–4 of the `003_mcp_stabilize_and_ground` POR are **complete**. The MCP server
+**All 6 stages of the `003_mcp_stabilize_and_ground` POR are complete.** The MCP server
 is stable, returns structured JSON, validates identifiers against the schema before
-they reach Blender, reconnects after transport failures, and has a full procedural
-authoring toolset with dirty-flag invalidation. 113 offline tests pass. 25 tools are
-registered.
+they reach Blender, reconnects after transport failures, has a full procedural authoring
+toolset with dirty-flag invalidation, and can set parameters, render, sweep, and export
+labels with provenance snapshots. 175 offline tests pass. 33 tools are registered.
 
 ## What was built in this task
 
@@ -72,34 +72,41 @@ registered.
 |---|---|
 | `src/synthgen/mcp/grounding.py` | Schema validation — `validate_node_type`, `validate_socket`, `validate_setting` |
 | `src/synthgen/mcp/tools/verify.py` | `verify_attribute_exists` tool |
+| `src/synthgen/mcp/tools/pipeline.py` | Layer 4 tools — `set_parameter`, `render`, `sweep`, `export_labels` |
 | `tests/test_transport.py` | Transport reconnection + error handling tests |
 | `tests/test_mcp_schema.py` | Structured JSON response tests + MCP tool integration |
 | `tests/test_mcp_graph.py` | Preamble consistency tests |
 | `tests/test_grounding.py` | Grounding validation + Layer 2 integration tests |
 | `tests/test_stage4_tools.py` | Stage 4 tools + dirty-flag tests (40 tests) |
+| `tests/test_stage5_tools.py` | Stage 5 tools — Layer 1 gaps + Layer 4 pipeline (62 tests) |
 
 ### Modified files
 | File | What changed |
 |---|---|
 | `src/synthgen/mcp/transport.py` | `TransportError`, `_close_socket()`, reconnect-on-failure, `connect_timeout`, dirty-flag (`dirty`/`mark_dirty`/`clear_dirty`) on `TransportBackend` |
-| `src/synthgen/mcp/server.py` | `_blender_dir` detection on first connect, `verify_tools` registered, `_get_blender_dir` passed to schema + blender tools |
-| `src/synthgen/mcp/tools/schema.py` | Returns JSON via `data_*` functions, accepts `get_blender_dir` callback |
-| `src/synthgen/mcp/tools/graph.py` | `_graph_preamble()` with auto-resolve when dirty, all 6 tools refactored to use it |
-| `src/synthgen/mcp/tools/blender.py` | Grounding validators imported; `_run(mutates=True)` on all mutating tools; Stage 4 tools added: `expose_parameter`, `add_driver`, `wire_attr_bridge`, `wire_compositor_pass` |
+| `src/synthgen/mcp/server.py` | `_blender_dir` detection on first connect, all tool modules registered including `pipeline_tools` |
+| `src/synthgen/mcp/tools/schema.py` | Returns JSON via `data_*` functions, accepts `get_blender_dir` callback, agent guidance in docstrings |
+| `src/synthgen/mcp/tools/graph.py` | `_graph_preamble()` with auto-resolve when dirty, all 6 tools refactored, agent guidance in docstrings |
+| `src/synthgen/mcp/tools/blender.py` | Grounding validators; `_run(mutates=True)`; Stage 4 tools; Stage 5 Layer 1 tools (`configure_render`, `import_asset`, `edit_mesh`, `add_keyframes`); agent guidance in all docstrings |
 | `src/synthgen/schema/query.py` | `resolve_schema_dir()`, `data_find/show/socket/setting()`, `load_schema(blender_dir=)` |
 | `tests/test_schema_query.py` | Added `TestVersionResolution` class |
 
-## What's NOT done (POR Stages 5–6)
-
 ### Stage 5 — Phase 3c (setup + sweep)
-- [ ] **Layer 1 gaps:** `edit_mesh`, `import_asset`, `configure_render`, `add_keyframes`
-- [ ] **Layer 4 entirely:** `set_parameter`, `render`, `sweep`, `export_labels`
-- [ ] **Provenance snapshots** — auto-save graph state with render/sweep outputs
-- [ ] **Agent guidance** in all tool descriptions (procedural-first nudges)
+- **Layer 1 gaps filled:** `configure_render`, `import_asset`, `edit_mesh`, `add_keyframes`
+  added to `blender.py`. All carry procedural-first agent guidance.
+- **Layer 4 tools:** `set_parameter`, `render`, `sweep`, `export_labels` in new
+  `pipeline.py` module. `sweep` generates a single Python script with
+  `itertools.product` for the full cartesian product in one transport call.
+- **Provenance snapshots:** `render` and `sweep` capture `LiveGraph` state alongside
+  outputs as `.provenance.json` files. Dirty flag is resolved before each render.
+- **Agent guidance:** All 33 tool docstrings carry procedural-first nudges.
+- **62 new tests** in `test_stage5_tools.py`.
 
 ### Stage 6 — Housekeeping
-- [ ] **Update ROADMAP.md** — Phase 3 in progress, POR decisions locked
-- [ ] **Reconcile file layout** — document `blender.py` consolidation vs POR's split
+- **ROADMAP.md** updated: Phase 3 → "✅ done", tool count 33, test count 175.
+- **File layout documented:** `blender.py` (Layer 1+2), `pipeline.py` (Layer 4),
+  `graph.py` (Layer 3), `schema.py`, `verify.py`.
+- **POR** decisions locked section updated with `pipeline.py` decision.
 
 ## Architecture notes for the next agent
 
@@ -113,23 +120,22 @@ messages (which list available sockets/properties) are the fallback.
 ### Dirty-flag design
 The dirty flag lives on `TransportBackend` (shared by `SocketTransport` and
 `DirectBpyTransport`). It's a global bool — "something mutated, re-resolve
-everything." This matches the `scene_graph_contexts.md` guidance: "memoize within
-a graph session keyed on the depsgraph update tag; invalidate on scene change."
-Per-object scoping was considered but deferred as unnecessary complexity.
+everything." `render` and `sweep` in `pipeline.py` manually resolve the flag via
+`_resolve_dirty_code()` before rendering, since they aren't graph-introspection
+tools but still need to cook the depsgraph. Per-object scoping was considered but
+deferred as unnecessary complexity.
 
 ### Compound tools pattern
-`wire_attr_bridge` and `wire_compositor_pass` are the first multi-node compound
-tools. They generate a single Python script that creates multiple nodes, sets
-properties, and links sockets in one `execute_python` call. The response JSON
-includes all created node names/identifiers so the agent can reference them in
-subsequent tool calls.
+`wire_attr_bridge`, `wire_compositor_pass`, and `sweep` generate single Python
+scripts that perform multiple operations in one `execute_python` call. `sweep` uses
+`itertools.product` Blender-side so the entire cartesian product runs in one
+transport round-trip.
 
-### Layer 4 guidance
-`set_parameter` should set GN modifier socket values via
-`obj.modifiers["name"]["Socket_N"]`. `render` should call `bpy.ops.render.render()`
-with configurable output path. `sweep` iterates parameter combinations and renders
-each. `export_labels` extracts ground-truth data from compositor File Output nodes
-or attribute values.
+### Layer 4 file layout
+`pipeline.py` was split from `blender.py` because Layer 4 tools are structurally
+different: they compose operations, handle iteration loops, and interact with the
+filesystem for provenance — orchestration, not mutation. Registered in `server.py`
+alongside the existing modules.
 
 ## How to test
 

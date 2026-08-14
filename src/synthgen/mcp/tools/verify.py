@@ -21,7 +21,10 @@ def register(mcp: FastMCP, get_transport) -> None:
 
     @mcp.tool()
     def verify_attribute_exists(object_name: str, attribute_name: str) -> str:
-        """Check whether a named attribute exists on an object's evaluated mesh.
+        """Validate attribute bridges at runtime. Use after wire_attr_bridge to
+        confirm data flows correctly.
+
+        Check whether a named attribute exists on an object's evaluated mesh.
 
         Cooks the depsgraph to get the evaluated object, then checks its
         mesh attributes. Use this after wiring a Store Named Attribute node

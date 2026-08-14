@@ -61,11 +61,13 @@ from synthgen.mcp.tools import schema as schema_tools
 from synthgen.mcp.tools import graph as graph_tools
 from synthgen.mcp.tools import blender as blender_tools
 from synthgen.mcp.tools import verify as verify_tools
+from synthgen.mcp.tools import pipeline as pipeline_tools
 
 schema_tools.register(mcp, _get_blender_dir)
 graph_tools.register(mcp, _get_transport)
 blender_tools.register(mcp, _get_transport, _get_blender_dir)
 verify_tools.register(mcp, _get_transport)
+pipeline_tools.register(mcp, _get_transport, _get_blender_dir)
 
 
 # --- Entry point ------------------------------------------------------------

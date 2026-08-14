@@ -29,7 +29,10 @@ def register(mcp: FastMCP, get_blender_dir=None) -> None:
         return schema["nodes"]
     @mcp.tool()
     def schema_find(substring: str, tree_type: str = "gn") -> str:
-        """Find Blender nodes whose type ID or label matches a substring.
+        """Query the grounded schema before authoring nodes. Socket label != identifier —
+        always use identifiers from this tool.
+
+        Find Blender nodes whose type ID or label matches a substring.
 
         Grounded against extracted Blender schemas — returns real node identifiers,
         not guesses. Use this before creating nodes to get the correct type ID.
@@ -44,7 +47,10 @@ def register(mcp: FastMCP, get_blender_dir=None) -> None:
 
     @mcp.tool()
     def schema_show(node: str, tree_type: str = "gn") -> str:
-        """Show full details for a Blender node type: all sockets (with identifiers,
+        """Inspect node details before wiring. Socket label != identifier — use
+        identifiers returned here.
+
+        Show full details for a Blender node type: all sockets (with identifiers,
         not labels), settings, and their defaults.
 
         IMPORTANT: Socket identifiers are what you use in code. Socket labels are
@@ -60,7 +66,10 @@ def register(mcp: FastMCP, get_blender_dir=None) -> None:
 
     @mcp.tool()
     def schema_socket(substring: str, tree_type: str = "gn") -> str:
-        """Find nodes that have a socket matching a substring.
+        """Look up socket details before linking. The identifier is what Blender
+        uses internally, not the display label.
+
+        Find nodes that have a socket matching a substring.
 
         Useful when you know the socket name but not which node has it.
 
@@ -74,7 +83,10 @@ def register(mcp: FastMCP, get_blender_dir=None) -> None:
 
     @mcp.tool()
     def schema_setting(substring: str, tree_type: str = "gn") -> str:
-        """Find nodes that have an enum setting matching a substring.
+        """Verify setting names before set_node_property. Use the exact names
+        returned here.
+
+        Find nodes that have an enum setting matching a substring.
 
         Useful for finding nodes with domain, data_type, or other enum controls.
 

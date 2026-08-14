@@ -1,3 +1,28 @@
 {
-  "model": "claude-opus-4-6"
+  "model": "claude-opus-4-6",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(pytest *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(git stash*)",
+      "PowerShell(pytest *)",
+      "PowerShell(python *)",
+      "PowerShell(pip *)",
+      "PowerShell(git status*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git log*)",
+      "PowerShell(git add *)",
+      "PowerShell(git stash*)"
+    ]
+  }
 }

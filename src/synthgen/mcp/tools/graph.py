@@ -51,7 +51,9 @@ def register(mcp: FastMCP, get_transport) -> None:
 
     @mcp.tool()
     def graph_nodes() -> str:
-        """List all top-level nodes in the scene graph.
+        """Introspect before mutating. Use this to understand the current scene structure.
+
+        List all top-level nodes in the scene graph.
 
         Returns qualified node IDs using the synthgen addressing scheme:
         COL:<name>, OBJ:<name>, OBJ:<name>/MOD:<mod>, NG:<tree>, MAT:<mat>.
@@ -62,7 +64,10 @@ def register(mcp: FastMCP, get_transport) -> None:
 
     @mcp.tool()
     def graph_neighbors(node_id: str) -> str:
-        """Get all edges connected to a node.
+        """Explore connections before rewiring. Verify your procedural pipeline is
+        wired correctly.
+
+        Get all edges connected to a node.
 
         Returns edges with src, dst, type, tier, and data fields.
         Use this to explore the scene graph from any node.
@@ -81,7 +86,9 @@ def register(mcp: FastMCP, get_transport) -> None:
 
     @mcp.tool()
     def graph_reachable(node_id: str, edge_types: list[str] | None = None) -> str:
-        """Find all nodes reachable from a starting node by following edges.
+        """Trace the full dependency tree before modifying upstream nodes.
+
+        Find all nodes reachable from a starting node by following edges.
 
         Useful for understanding the full dependency tree of an object,
         material, or node group.
@@ -101,7 +108,10 @@ def register(mcp: FastMCP, get_transport) -> None:
 
     @mcp.tool()
     def graph_impact_set(node_id: str, edge_types: list[str] | None = None) -> str:
-        """Find all nodes that would be affected if a given node changes.
+        """Check blast radius before modifying nodes — understand what depends on
+        your target.
+
+        Find all nodes that would be affected if a given node changes.
 
         Follows edges in reverse — "if I change X, what depends on X?"
         Essential for understanding the blast radius of a modification.
@@ -120,7 +130,9 @@ def register(mcp: FastMCP, get_transport) -> None:
 
     @mcp.tool()
     def graph_attribute_trace(attr_name: str) -> str:
-        """Trace a named attribute across the GN-to-shader bridge.
+        """Verify attribute bridges are correctly wired before rendering.
+
+        Trace a named attribute across the GN-to-shader bridge.
 
         Finds all producers (GN Store Named Attribute) and consumers
         (ShaderNodeAttribute) of a named attribute, connected via tier-2
@@ -146,7 +158,9 @@ def register(mcp: FastMCP, get_transport) -> None:
 
     @mcp.tool()
     def graph_snapshot() -> str:
-        """Serialize the full scene graph to JSON for diffing or provenance.
+        """Capture provenance — the full procedural state for reproducibility and diffing.
+
+        Serialize the full scene graph to JSON for diffing or provenance.
 
         Returns all nodes and edges as a structured JSON document.
         """
