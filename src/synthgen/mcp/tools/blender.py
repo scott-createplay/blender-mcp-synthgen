@@ -18,6 +18,27 @@ if TYPE_CHECKING:
 
 def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
+    def _autosave() -> None:
+        """Best-effort sidecar save. Call after compound operations, not every mutation."""
+        try:
+            save_code = textwrap.dedent("""\
+                import bpy, time
+                fp = bpy.data.filepath
+                if fp:
+                    save_path = fp.rsplit('.', 1)[0] + '.autosave.blend'
+                else:
+                    import tempfile, os
+                    save_path = os.path.join(tempfile.gettempdir(), 'synthgen_autosave.blend')
+                start = time.monotonic()
+                bpy.ops.wm.save_as_mainfile(filepath=save_path, copy=True)
+                elapsed = time.monotonic() - start
+                if elapsed > 2.0:
+                    print(f"WARNING: auto-save took {elapsed:.1f}s — consider disabling for large scenes")
+            """)
+            get_transport().execute_python(save_code)
+        except Exception:
+            pass  # auto-save is best-effort
+
     def _run(code: str, mutates: bool = False) -> str:
         transport = get_transport()
         if mutates:
@@ -28,24 +49,6 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         else:
             output = str(result)
         if mutates:
-            try:
-                save_code = textwrap.dedent("""\
-                    import bpy, time
-                    fp = bpy.data.filepath
-                    if fp:
-                        save_path = fp.rsplit('.', 1)[0] + '.autosave.blend'
-                    else:
-                        import tempfile, os
-                        save_path = os.path.join(tempfile.gettempdir(), 'synthgen_autosave.blend')
-                    start = time.monotonic()
-                    bpy.ops.wm.save_as_mainfile(filepath=save_path, copy=True)
-                    elapsed = time.monotonic() - start
-                    if elapsed > 2.0:
-                        print(f"WARNING: auto-save took {elapsed:.1f}s — consider disabling for large scenes")
-                """)
-                transport.execute_python(save_code)
-            except Exception:
-                pass  # auto-save is best-effort
             output = output.rstrip()
             if output:
                 output += "\n"
@@ -568,6 +571,15 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         for i, ns in enumerate(nodes):
             node_keys.append(ns.get("name", f"node_{i}"))
 
+        seen = {}
+        for i, key in enumerate(node_keys):
+            if key in seen:
+                return json.dumps({
+                    "error": "duplicate node name",
+                    "message": f"Node name {key!r} appears at index {seen[key]} and {i}",
+                })
+            seen[key] = i
+
         # Phase 2 — Generate a single Python script
         parts = ["import bpy, json", "", "created_tree = False", "try:"]
 
@@ -673,7 +685,9 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         parts.append('    print(json.dumps({"error": "build_graph failed", "message": str(_e), "rolled_back": created_tree}))')
 
         code = "\n".join(parts)
-        return _run(code, mutates=True)
+        result = _run(code, mutates=True)
+        _autosave()
+        return result
 
     @mcp.tool()
     def add_gn_modifier(object_name: str, modifier_name: str = "GeometryNodes", tree_name: str | None = None) -> str:
@@ -757,22 +771,44 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         else:
             tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
 
-        name_line = f"node.name = {name!r}" if name else ""
-        return _run(textwrap.dedent(f"""\
-            import bpy, json
-            tree = {tree_lookup}
-            if not tree:
-                print("ERROR: tree not found")
-            else:
+        if name:
+            create_lines = textwrap.dedent(f"""\
+                existing = tree.nodes.get({name!r})
+                if existing:
+                    print(json.dumps({{
+                        "error": f"node name {name!r} already exists in tree",
+                        "existing_type": existing.bl_idname,
+                        "available_names": [n.name for n in tree.nodes],
+                    }}))
+                else:
+                    node = tree.nodes.new({node_type!r})
+                    node.name = {name!r}
+                    print(json.dumps({{
+                        "name": node.name,
+                        "type": node.bl_idname,
+                        "inputs": [s.identifier for s in node.inputs],
+                        "outputs": [s.identifier for s in node.outputs],
+                    }}))
+            """)
+        else:
+            create_lines = textwrap.dedent(f"""\
                 node = tree.nodes.new({node_type!r})
-                {name_line}
                 print(json.dumps({{
                     "name": node.name,
                     "type": node.bl_idname,
                     "inputs": [s.identifier for s in node.inputs],
                     "outputs": [s.identifier for s in node.outputs],
                 }}))
-        """), mutates=True)
+            """)
+
+        code = textwrap.dedent(f"""\
+            import bpy, json
+            tree = {tree_lookup}
+            if not tree:
+                print("ERROR: tree not found")
+            else:
+        """) + textwrap.indent(create_lines, "    ")
+        return _run(code, mutates=True)
 
     @mcp.tool()
     def link_sockets(
@@ -1185,7 +1221,9 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                     }},
                 }}))
         """)
-        return _run(code, mutates=True)
+        result = _run(code, mutates=True)
+        _autosave()
+        return result
 
     @mcp.tool()
     def wire_compositor_pass(
@@ -1253,7 +1291,9 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                         "format": {file_format!r},
                     }}))
         """)
-        return _run(code, mutates=True)
+        result = _run(code, mutates=True)
+        _autosave()
+        return result
 
     @mcp.tool()
     def execute_python(code: str, reason: str) -> str:
@@ -1272,3 +1312,12 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             reason: Why structured tools can't handle this. Required for audit trail.
         """
         return _run(code, mutates=True)
+
+    @mcp.tool()
+    def save_checkpoint() -> str:
+        """Save the current scene to a sidecar .autosave.blend file. Call this
+        after a series of mutations to create a recovery point. This is NOT
+        called automatically — use it when you want to checkpoint your work.
+        """
+        _autosave()
+        return json.dumps({"saved": True})

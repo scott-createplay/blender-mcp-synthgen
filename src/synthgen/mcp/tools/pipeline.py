@@ -234,7 +234,14 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
         for_seed_block = textwrap.dedent("""\
             for socket, value in zip(sockets, combo):
-                mod[socket] = value
+                if bpy.app.version >= (5, 0, 0):
+                    inp = getattr(mod.properties.inputs, socket, None)
+                    if inp is not None:
+                        inp.default_value = value
+                    else:
+                        print(f"WARNING: socket {socket} not found on mod.properties.inputs")
+                else:
+                    mod[socket] = value
             for seed in seed_list:
         """) + textwrap.indent(loop_body, "    ")
 

@@ -114,6 +114,46 @@ def register(mcp: FastMCP, get_transport) -> None:
         """))
 
     @mcp.tool()
+    def list_tree_nodes(
+        tree_name: str,
+        tree_context: str = "gn",
+    ) -> str:
+        """List all nodes in a node tree — names, types, and socket identifiers.
+        Use before mutations (link_sockets, set_socket_default) to verify node
+        names and available sockets. Cheap call — no depsgraph evaluation.
+
+        Args:
+            tree_name: Name of the node tree.
+            tree_context: Where to find the tree — "gn", "shader", "compositor".
+        """
+        if tree_context == "shader":
+            tree_lookup_lines = [
+                f"_mat = bpy.data.materials.get({tree_name!r})",
+                "tree = _mat.node_tree if _mat else None",
+            ]
+        elif tree_context == "compositor":
+            tree_lookup_lines = ["tree = bpy.context.scene.compositing_node_group"]
+        else:
+            tree_lookup_lines = [f"tree = bpy.data.node_groups.get({tree_name!r})"]
+
+        parts = ["import bpy, json"]
+        parts.extend(tree_lookup_lines)
+        parts.append("if not tree:")
+        parts.append(f'    print(json.dumps({{"error": f"tree {tree_name!r} not found"}}))')
+        parts.append("else:")
+        parts.append("    nodes = []")
+        parts.append("    for n in tree.nodes:")
+        parts.append("        nodes.append({")
+        parts.append('            "name": n.name,')
+        parts.append('            "type": n.bl_idname,')
+        parts.append('            "inputs": [s.identifier for s in n.inputs],')
+        parts.append('            "outputs": [s.identifier for s in n.outputs],')
+        parts.append("        })")
+        parts.append('    print(json.dumps({"tree": tree.name, "node_count": len(nodes), "nodes": nodes}))')
+
+        return _run("\n".join(parts))
+
+    @mcp.tool()
     def evaluate_object(object_name: str) -> str:
         """Evaluate an object through the depsgraph and return its mesh stats,
         attributes, and modifier warnings. One call replaces multiple diagnostic

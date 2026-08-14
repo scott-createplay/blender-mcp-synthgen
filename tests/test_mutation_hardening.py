@@ -474,14 +474,28 @@ class TestGraphUnresolvedState:
 # --- 4.3: auto-save sidecar after mutations ----------------------------------
 
 class TestAutoSave:
-    def test_mutation_triggers_second_execute_python_call_for_save(self, registered_tools):
+    def test_individual_mutation_does_not_trigger_autosave(self, registered_tools):
+        """Individual mutation tools no longer auto-save on every call — only
+        compound tools (build_graph, wire_attr_bridge, wire_compositor_pass)
+        and the explicit save_checkpoint tool do."""
         fns, transport = registered_tools
         fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
+        assert transport.execute_python.call_count == 1
+
+    def test_compound_tool_triggers_autosave(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="test",
+            nodes=[{"type": "GeometryNodeMeshGrid", "name": "grid"}],
+        )
         assert transport.execute_python.call_count == 2
 
     def test_autosave_code_uses_save_as_mainfile_with_copy(self, registered_tools):
         fns, transport = registered_tools
-        fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
+        fns["build_graph"](
+            tree_name="test",
+            nodes=[{"type": "GeometryNodeMeshGrid", "name": "grid"}],
+        )
         save_code = transport.execute_python.call_args_list[1][0][0]
         assert "bpy.ops.wm.save_as_mainfile" in save_code
         assert "copy=True" in save_code
@@ -489,11 +503,14 @@ class TestAutoSave:
     def test_autosave_failure_does_not_break_tool_result(self, registered_tools):
         fns, transport = registered_tools
         transport.execute_python.side_effect = [
-            {"output": "ok"},
+            {"output": '{"tree_name": "test"}'},
             RuntimeError("save failed"),
         ]
-        result = fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
-        assert "ok" in result
+        result = fns["build_graph"](
+            tree_name="test",
+            nodes=[{"type": "GeometryNodeMeshGrid", "name": "grid"}],
+        )
+        assert "tree_name" in result
 
     def test_read_only_tool_does_not_trigger_autosave(self, verify_tools):
         fns, transport = verify_tools
@@ -679,4 +696,120 @@ class TestBuildGraph:
         parsed = json.loads(result)
         assert parsed["error"] == "grounding"
         assert len(parsed["failures"]) == 2
+        transport.execute_python.assert_not_called()
+
+
+# --- sweep() — Blender 5.x GN modifier input API -----------------------------
+
+class TestSweep5x:
+    def test_sweep_version_branching(self, pipeline_tools):
+        """sweep() generated code should branch on bpy.app.version for setting modifier inputs."""
+        fns, transport = pipeline_tools
+        fns["sweep"](
+            object_name="obj",
+            modifier_name="mod",
+            parameters=[{"socket": "Socket_1", "values": [1.0, 2.0]}],
+            output_dir="/tmp/out",
+        )
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.app.version" in code
+        assert "mod.properties.inputs" in code
+
+
+# --- save_checkpoint ----------------------------------------------------------
+
+class TestSaveCheckpoint:
+    def test_registered(self, registered_tools):
+        fns, _ = registered_tools
+        assert "save_checkpoint" in fns
+
+    def test_calls_execute_python_with_save_code(self, registered_tools):
+        fns, transport = registered_tools
+        fns["save_checkpoint"]()
+        transport.execute_python.assert_called_once()
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.ops.wm.save_as_mainfile" in code
+        assert "copy=True" in code
+
+    def test_returns_saved_true(self, registered_tools):
+        fns, _ = registered_tools
+        result = fns["save_checkpoint"]()
+        parsed = json.loads(result)
+        assert parsed["saved"] is True
+
+    def test_does_not_mark_dirty(self, registered_tools):
+        fns, transport = registered_tools
+        fns["save_checkpoint"]()
+        transport.mark_dirty.assert_not_called()
+
+    def test_failure_is_swallowed(self, registered_tools):
+        fns, transport = registered_tools
+        transport.execute_python.side_effect = RuntimeError("save failed")
+        result = fns["save_checkpoint"]()
+        parsed = json.loads(result)
+        assert parsed["saved"] is True
+
+
+# --- list_tree_nodes -----------------------------------------------------------
+
+class TestListTreeNodes:
+    def test_registered(self, verify_tools):
+        fns, _ = verify_tools
+        assert "list_tree_nodes" in fns
+
+    def test_generated_code_iterates_nodes(self, verify_tools):
+        fns, transport = verify_tools
+        fns["list_tree_nodes"](tree_name="MyTree")
+        code = transport.execute_python.call_args[0][0]
+        assert "tree.nodes" in code
+
+    def test_is_read_only(self, verify_tools):
+        fns, transport = verify_tools
+        fns["list_tree_nodes"](tree_name="MyTree")
+        transport.mark_dirty.assert_not_called()
+
+    def test_shader_context(self, verify_tools):
+        fns, transport = verify_tools
+        fns["list_tree_nodes"](tree_name="MyMat", tree_context="shader")
+        code = transport.execute_python.call_args[0][0]
+        assert "bpy.data.materials.get" in code
+
+    def test_compositor_context(self, verify_tools):
+        fns, transport = verify_tools
+        fns["list_tree_nodes"](tree_name="Comp", tree_context="compositor")
+        code = transport.execute_python.call_args[0][0]
+        assert "compositing_node_group" in code
+
+
+# --- add_node duplicate-name safety --------------------------------------------
+
+class TestAddNodeDuplicateCheck:
+    def test_generated_code_checks_for_existing_node_when_name_given(self, registered_tools):
+        fns, transport = registered_tools
+        fns["add_node"]("MyTree", "GeometryNodeDistributePointsOnFaces", name="scatter", tree_context="gn")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "tree.nodes.get('scatter')" in code
+        assert "already exists" in code
+
+    def test_no_duplicate_check_without_name(self, registered_tools):
+        fns, transport = registered_tools
+        fns["add_node"]("MyTree", "GeometryNodeDistributePointsOnFaces", tree_context="gn")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "already exists" not in code
+
+
+# --- build_graph duplicate node names -------------------------------------------
+
+class TestBuildGraphDuplicateKeys:
+    def test_duplicate_names_returns_error_without_execute(self, registered_tools):
+        fns, transport = registered_tools
+        result = fns["build_graph"](
+            tree_name="test",
+            nodes=[
+                {"type": "GeometryNodeMeshGrid", "name": "dup"},
+                {"type": "GeometryNodeMeshGrid", "name": "dup"},
+            ],
+        )
+        parsed = json.loads(result)
+        assert "duplicate" in parsed["error"]
         transport.execute_python.assert_not_called()
