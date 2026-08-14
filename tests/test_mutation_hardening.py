@@ -4,6 +4,8 @@ This file accumulates tests across the Stage 1 sub-steps. Start with 1.1
 (transport timeout with actionable error message); later steps append here.
 """
 
+import json
+
 import pytest
 from unittest.mock import MagicMock
 
@@ -583,3 +585,98 @@ class TestUngroundedCostInMutations:
         fns, _ = registered_tools
         result = fns["create_object"](name="Cube", type="MESH", mesh_type="cube")
         assert "re-resolve" in result or "graph cache" in result
+
+
+# --- Stage 5.1: build_graph compound tool ------------------------------------
+
+class TestBuildGraph:
+    def test_registered(self, registered_tools):
+        fns, _ = registered_tools
+        assert "build_graph" in fns
+
+    def test_validates_all_nodes_before_mutation(self, registered_tools):
+        """All node types must be validated before any code is sent to Blender."""
+        fns, transport = registered_tools
+        # Use an invalid node type — should fail with grounding error, no execute_python call
+        result = fns["build_graph"](
+            tree_name="test_tree",
+            nodes=[{"type": "FakeNode123"}],
+        )
+        assert "grounding" in result
+        transport.execute_python.assert_not_called()
+
+    def test_single_script_for_full_graph(self, registered_tools):
+        """A full graph spec should produce exactly one execute_python call
+        (plus one auto-save call), not N calls."""
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="test",
+            nodes=[
+                {"type": "GeometryNodeDistributePointsOnFaces", "name": "scatter"},
+                {"type": "GeometryNodeInputMeshFaceArea", "name": "area"},
+            ],
+            links=[
+                {"from_node": "area", "from_socket": "Area",
+                 "to_node": "scatter", "to_socket": "Density Factor"},
+            ],
+            parameters=[
+                {"socket_type": "NodeSocketFloat", "name": "Density", "default": 10.0},
+            ],
+            defaults=[
+                {"node": "scatter", "socket": "Distance Min", "value": 2.0},
+            ],
+        )
+        # Should be exactly 2 calls: one for the graph build, one for auto-save
+        assert transport.execute_python.call_count == 2
+
+    def test_generated_code_creates_all_nodes(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="test",
+            nodes=[
+                {"type": "GeometryNodeDistributePointsOnFaces", "name": "scatter"},
+                {"type": "GeometryNodeInputMeshFaceArea", "name": "area"},
+            ],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "GeometryNodeDistributePointsOnFaces" in code
+        assert "GeometryNodeInputMeshFaceArea" in code
+        assert "node_map" in code or "nodes" in code
+
+    def test_generated_code_has_rollback(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="test",
+            nodes=[{"type": "GeometryNodeMeshGrid", "name": "grid"}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "node_groups.remove" in code
+        assert "rolled_back" in code
+
+    def test_int_coercion_for_parameters(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="test",
+            nodes=[{"type": "GeometryNodeMeshGrid", "name": "grid"}],
+            parameters=[
+                {"socket_type": "NodeSocketInt", "name": "Seed", "default": 42.0},
+            ],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "int(" in code
+
+    def test_grounding_error_reports_all_failures(self, registered_tools):
+        """If multiple nodes fail validation, all failures should be reported."""
+        fns, transport = registered_tools
+        result = fns["build_graph"](
+            tree_name="test",
+            nodes=[
+                {"type": "FakeNode1"},
+                {"type": "GeometryNodeMeshGrid"},  # valid
+                {"type": "FakeNode2"},
+            ],
+        )
+        parsed = json.loads(result)
+        assert parsed["error"] == "grounding"
+        assert len(parsed["failures"]) == 2
+        transport.execute_python.assert_not_called()

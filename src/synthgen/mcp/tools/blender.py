@@ -497,6 +497,185 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         """), mutates=True)
 
     @mcp.tool()
+    def build_graph(
+        tree_name: str,
+        nodes: list[dict],
+        links: list[dict] | None = None,
+        parameters: list[dict] | None = None,
+        defaults: list[dict] | None = None,
+        tree_type: str = "GeometryNodeTree",
+        tree_context: str = "gn",
+        create_tree: bool = True,
+    ) -> str:
+        """Build an entire node graph in a single call. Validates all node types
+        against the grounding schema before creating anything (fail-fast). On any
+        failure after creation starts, rolls back by deleting the tree.
+
+        This replaces dozens of individual add_node/link_sockets/expose_parameter/
+        set_socket_default calls with one atomic operation.
+
+        Args:
+            tree_name: Name for the node tree.
+            nodes: List of node specs, each with:
+                  - type: Blender node type ID (e.g. "GeometryNodeDistributePointsOnFaces")
+                  - name: Optional custom name for the node
+            links: Optional list of link specs, each with:
+                  - from_node: Name of the source node
+                  - from_socket: Output socket identifier
+                  - to_node: Name of the destination node
+                  - to_socket: Input socket identifier
+            parameters: Optional list of interface parameter specs, each with:
+                  - socket_type: e.g. "NodeSocketFloat", "NodeSocketInt"
+                  - name: Display name
+                  - default: Optional default value
+                  - min: Optional minimum
+                  - max: Optional maximum
+            defaults: Optional list of socket default overrides, each with:
+                  - node: Node name
+                  - socket: Socket identifier
+                  - value: Value to set
+            tree_type: Node tree type — "GeometryNodeTree" (default),
+                      "ShaderNodeTree", "CompositorNodeTree".
+            tree_context: Where to find/create the tree — "gn", "shader", "compositor".
+            create_tree: If True (default), create a new tree. If False, use existing.
+        """
+        # Phase 1 — Validate all node types (fail-fast, before any mutation)
+        bd = _blender_dir()
+        errors = []
+        for i, node_spec in enumerate(nodes):
+            v = validate_node_type(node_spec["type"], tree_context, blender_dir=bd)
+            if not v.valid:
+                errors.append({
+                    "index": i,
+                    "type": node_spec["type"],
+                    "message": v.message,
+                    "suggestions": v.suggestions,
+                })
+        if errors:
+            return json.dumps({
+                "error": "grounding",
+                "message": "Node type validation failed",
+                "failures": errors,
+            })
+
+        # Normalize optional lists
+        _links = links or []
+        _parameters = parameters or []
+        _defaults = defaults or []
+
+        # Assign stable keys — use provided name, else "node_{i}"
+        node_keys = []
+        for i, ns in enumerate(nodes):
+            node_keys.append(ns.get("name", f"node_{i}"))
+
+        # Phase 2 — Generate a single Python script
+        parts = ["import bpy, json", "", "created_tree = False", "try:"]
+
+        # Tree creation / lookup
+        if create_tree:
+            parts.append(f"    tree = bpy.data.node_groups.new({tree_name!r}, {tree_type!r})")
+            parts.append("    created_tree = True")
+        else:
+            if tree_context == "shader":
+                parts.append(f"    _mat = bpy.data.materials.get({tree_name!r})")
+                parts.append("    tree = _mat.node_tree if _mat else None")
+            elif tree_context == "compositor":
+                parts.append("    tree = bpy.context.scene.compositing_node_group")
+            else:
+                parts.append(f"    tree = bpy.data.node_groups.get({tree_name!r})")
+            parts.append("    if not tree:")
+            parts.append(f'        print(json.dumps({{"error": "tree {tree_name} not found"}}))')
+            parts.append("        raise SystemExit")
+
+        parts.append("")
+        parts.append("    node_map = {}")
+
+        # Create nodes
+        for i, ns in enumerate(nodes):
+            key = node_keys[i]
+            parts.append(f"    _n = tree.nodes.new({ns['type']!r})")
+            parts.append(f"    _n.name = {key!r}")
+            parts.append(f"    node_map[{key!r}] = _n")
+
+        # Create links
+        for lk in _links:
+            fn, fs = lk["from_node"], lk["from_socket"]
+            tn, ts = lk["to_node"], lk["to_socket"]
+            parts.append(f"    _src = node_map[{fn!r}]")
+            parts.append(f"    _dst = node_map[{tn!r}]")
+            parts.append(f"    _osock = _src.outputs.get({fs!r})")
+            parts.append(f"    _isock = _dst.inputs.get({ts!r})")
+            parts.append("    if not _osock:")
+            parts.append(f'        print(json.dumps({{"error": "output socket " + {fs!r} + " not found on " + _src.name, "available": [s.identifier for s in _src.outputs]}}))')
+            parts.append("        raise SystemExit")
+            parts.append("    if not _isock:")
+            parts.append(f'        print(json.dumps({{"error": "input socket " + {ts!r} + " not found on " + _dst.name, "available": [s.identifier for s in _dst.inputs]}}))')
+            parts.append("        raise SystemExit")
+            parts.append("    tree.links.new(_osock, _isock)")
+
+        # Expose parameters
+        for pm in _parameters:
+            stype = pm["socket_type"]
+            sname = pm["name"]
+            parts.append("    try:")
+            parts.append(f"        _sock = tree.interface.new_socket(name={sname!r}, in_out='INPUT', socket_type={stype!r})")
+            if "default" in pm:
+                dval = pm["default"]
+                if stype == "NodeSocketInt":
+                    parts.append(f"        _sock.default_value = int({dval!r})")
+                else:
+                    parts.append(f"        _sock.default_value = {dval!r}")
+            if "min" in pm:
+                parts.append(f"        _sock.min_value = {pm['min']!r}")
+            if "max" in pm:
+                parts.append(f"        _sock.max_value = {pm['max']!r}")
+            parts.append("    except Exception as _pe:")
+            parts.append("        try:")
+            parts.append("            tree.interface.remove(_sock)")
+            parts.append("        except Exception:")
+            parts.append("            pass")
+            parts.append('        print(json.dumps({"error": "expose_parameter failed", "message": str(_pe)}))')
+            parts.append("        raise SystemExit")
+
+        # Set socket defaults
+        for df in _defaults:
+            dn, ds, dv = df["node"], df["socket"], df["value"]
+            parts.append(f"    _dn = node_map[{dn!r}]")
+            parts.append(f"    _ds = _dn.inputs.get({ds!r})")
+            parts.append("    if not _ds:")
+            parts.append(f'        print(json.dumps({{"error": "input socket " + {ds!r} + " not found on " + _dn.name, "available": [s.identifier for s in _dn.inputs]}}))')
+            parts.append("        raise SystemExit")
+            parts.append(f"    _ds.default_value = {dv!r}")
+
+        # Build result JSON
+        parts.append("    _nodes_out = []")
+        parts.append("    for _key, _node in node_map.items():")
+        parts.append('        _nodes_out.append({"name": _node.name, "type": _node.bl_idname, '
+                      '"inputs": [s.identifier for s in _node.inputs], '
+                      '"outputs": [s.identifier for s in _node.outputs]})')
+        parts.append("    _iface = []")
+        parts.append("    if hasattr(tree, 'interface'):")
+        parts.append("        _iface = [{\"name\": s.name, \"identifier\": s.identifier, "
+                      "\"socket_type\": s.bl_socket_idname, \"in_out\": s.in_out} "
+                      "for s in tree.interface.items_tree if hasattr(s, 'identifier')]")
+        parts.append('    print(json.dumps({"tree_name": tree.name, "node_count": len(node_map), '
+                      '"nodes": _nodes_out, "link_count": len(tree.links), "interface": _iface}))')
+
+        # Exception handlers
+        parts.append("except SystemExit:")
+        parts.append("    pass")
+        parts.append("except Exception as _e:")
+        parts.append("    if created_tree:")
+        parts.append("        try:")
+        parts.append("            bpy.data.node_groups.remove(tree)")
+        parts.append("        except Exception:")
+        parts.append("            pass")
+        parts.append('    print(json.dumps({"error": "build_graph failed", "message": str(_e), "rolled_back": created_tree}))')
+
+        code = "\n".join(parts)
+        return _run(code, mutates=True)
+
+    @mcp.tool()
     def add_gn_modifier(object_name: str, modifier_name: str = "GeometryNodes", tree_name: str | None = None) -> str:
         """Start of the procedural pipeline. Add a Geometry Nodes modifier, then use
         add_node/link_sockets to build the graph.
