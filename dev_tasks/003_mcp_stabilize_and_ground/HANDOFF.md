@@ -2,10 +2,11 @@
 
 ## Where we are
 
-Stages 1–3 of the `003_mcp_stabilize_and_ground` POR are **complete**. The MCP server
-is now stable, returns structured JSON, validates identifiers against the schema before
-they reach Blender, and reconnects gracefully after transport failures. 73 offline tests
-pass (up from 18). 21 tools are registered (up from 20).
+Stages 1–4 of the `003_mcp_stabilize_and_ground` POR are **complete**. The MCP server
+is stable, returns structured JSON, validates identifiers against the schema before
+they reach Blender, reconnects after transport failures, and has a full procedural
+authoring toolset with dirty-flag invalidation. 113 offline tests pass. 25 tools are
+registered.
 
 ## What was built in this task
 
@@ -45,6 +46,25 @@ pass (up from 18). 21 tools are registered (up from 20).
   - `link_sockets` — NOT statically validated (uses instance names, not type IDs;
     Blender-side validation with good error messages is the fallback)
 
+### Stage 4 — Procedural authoring tools + dirty-flag
+- **`expose_parameter` tool** — adds sockets to GN group interfaces via
+  `tree.interface.new_socket()`. Supports default/min/max values, INPUT/OUTPUT.
+- **`add_driver` tool** — adds scripted driver expressions to object properties.
+  Supports variable definitions with proper `bpy.data.<collection>` resolution via
+  lookup table. Variables reference other objects/materials/scenes by id_type + id_name.
+- **`wire_attr_bridge` compound tool** — creates Store Named Attribute (GN writer) +
+  Attribute node (shader reader) in one call. Enforces the three alignment rules from
+  `knowledge/attribute_bridge.md`: `data_type` set before linking Value socket,
+  `attribute_name` set as node property (not socket), and shader output mapped correctly
+  (FLOAT→Fac, FLOAT_COLOR→Color, FLOAT_VECTOR→Vector). Both node types grounding-validated.
+- **`wire_compositor_pass` tool** — creates Render Layers + File Output nodes in the
+  compositor, linked on the specified pass. Uses `scene.compositing_node_group`
+  (Blender 5.x API). Both compositor node types grounding-validated.
+- **Dirty-flag invalidation** — `TransportBackend` gains `dirty`/`mark_dirty()`/
+  `clear_dirty()`. All mutating tools (`_run(..., mutates=True)`) set the flag.
+  Graph tools auto-inject `g.resolve_attr_bridges()` via `_graph_preamble()` when
+  dirty. `graph_attribute_trace` always resolves regardless of flag state.
+
 ## Files changed (read these)
 
 ### New files
@@ -56,29 +76,20 @@ pass (up from 18). 21 tools are registered (up from 20).
 | `tests/test_mcp_schema.py` | Structured JSON response tests + MCP tool integration |
 | `tests/test_mcp_graph.py` | Preamble consistency tests |
 | `tests/test_grounding.py` | Grounding validation + Layer 2 integration tests |
+| `tests/test_stage4_tools.py` | Stage 4 tools + dirty-flag tests (40 tests) |
 
 ### Modified files
 | File | What changed |
 |---|---|
-| `src/synthgen/mcp/transport.py` | `TransportError`, `_close_socket()`, reconnect-on-failure in `_send_command`, `connect_timeout` param |
+| `src/synthgen/mcp/transport.py` | `TransportError`, `_close_socket()`, reconnect-on-failure, `connect_timeout`, dirty-flag (`dirty`/`mark_dirty`/`clear_dirty`) on `TransportBackend` |
 | `src/synthgen/mcp/server.py` | `_blender_dir` detection on first connect, `verify_tools` registered, `_get_blender_dir` passed to schema + blender tools |
-| `src/synthgen/mcp/tools/schema.py` | Returns JSON via `data_*` functions, accepts `get_blender_dir` callback, `_load_nodes` moved inside `register()` |
-| `src/synthgen/mcp/tools/graph.py` | `_PREAMBLE` constant, `_src_path()` moved to module level, all 6 tools use same preamble |
-| `src/synthgen/mcp/tools/blender.py` | Imports grounding validators, `add_node`/`set_node_property`/`set_socket_default` validate before sending |
-| `src/synthgen/schema/query.py` | `resolve_schema_dir()`, `data_find/show/socket/setting()`, `load_schema(blender_dir=)` param |
+| `src/synthgen/mcp/tools/schema.py` | Returns JSON via `data_*` functions, accepts `get_blender_dir` callback |
+| `src/synthgen/mcp/tools/graph.py` | `_graph_preamble()` with auto-resolve when dirty, all 6 tools refactored to use it |
+| `src/synthgen/mcp/tools/blender.py` | Grounding validators imported; `_run(mutates=True)` on all mutating tools; Stage 4 tools added: `expose_parameter`, `add_driver`, `wire_attr_bridge`, `wire_compositor_pass` |
+| `src/synthgen/schema/query.py` | `resolve_schema_dir()`, `data_find/show/socket/setting()`, `load_schema(blender_dir=)` |
 | `tests/test_schema_query.py` | Added `TestVersionResolution` class |
 
-## What's NOT done (POR Stages 4–6)
-
-### Stage 4 — Complete Phase 3b (procedural authoring)
-- [ ] **`expose_parameter` tool** — add socket to GN group interface
-- [ ] **`add_driver` tool** — add driver expressions
-- [ ] **`wire_attr_bridge` helper** — compound Store Named Attribute + Attribute node,
-      type-checked. See `knowledge/attribute_bridge.md` for spec.
-- [ ] **`wire_compositor_pass` helper** — render pass → File Output, must use
-      `scene.compositing_node_group` (Blender 5.x)
-- [ ] **Dirty-flag invalidation** — Layer 2 mutations set a flag → next Layer 3 query
-      auto-resolves tier-2 edges
+## What's NOT done (POR Stages 5–6)
 
 ### Stage 5 — Phase 3c (setup + sweep)
 - [ ] **Layer 1 gaps:** `edit_mesh`, `import_asset`, `configure_render`, `add_keyframes`
@@ -92,15 +103,33 @@ pass (up from 18). 21 tools are registered (up from 20).
 
 ## Architecture notes for the next agent
 
-The grounding design has a deliberate asymmetry: `add_node` **always** validates
-(it knows the type ID), but `link_sockets`, `set_node_property`, and `set_socket_default`
-work with node **instance names** (the `.name` property in the tree), not type IDs.
-Static validation only happens when the caller passes the optional `node_type` parameter.
-Blender-side error messages (which list available sockets/properties) are the fallback.
+### Grounding asymmetry
+`add_node` **always** validates (it knows the type ID), but `link_sockets`,
+`set_node_property`, and `set_socket_default` work with node **instance names**
+(the `.name` property in the tree), not type IDs. Static validation only happens
+when the caller passes the optional `node_type` parameter. Blender-side error
+messages (which list available sockets/properties) are the fallback.
 
-For `link_sockets`, a future improvement could be to first query Blender for the node's
-`bl_idname`, then validate the socket against the schema — but that doubles the round
-trips. The current Blender-side error messages are already good.
+### Dirty-flag design
+The dirty flag lives on `TransportBackend` (shared by `SocketTransport` and
+`DirectBpyTransport`). It's a global bool — "something mutated, re-resolve
+everything." This matches the `scene_graph_contexts.md` guidance: "memoize within
+a graph session keyed on the depsgraph update tag; invalidate on scene change."
+Per-object scoping was considered but deferred as unnecessary complexity.
+
+### Compound tools pattern
+`wire_attr_bridge` and `wire_compositor_pass` are the first multi-node compound
+tools. They generate a single Python script that creates multiple nodes, sets
+properties, and links sockets in one `execute_python` call. The response JSON
+includes all created node names/identifiers so the agent can reference them in
+subsequent tool calls.
+
+### Layer 4 guidance
+`set_parameter` should set GN modifier socket values via
+`obj.modifiers["name"]["Socket_N"]`. `render` should call `bpy.ops.render.render()`
+with configurable output path. `sweep` iterates parameter combinations and renders
+each. `export_labels` extracts ground-truth data from compositor File Output nodes
+or attribute values.
 
 ## How to test
 
@@ -120,11 +149,16 @@ python -c "
 from synthgen.mcp.grounding import validate_node_type
 print(validate_node_type('GeometryNodeDistributePointsOnFace', 'gn'))
 "
+
+# Interactive test (requires Blender + BlenderMCP addon on port 9876)
+# 1. Start Blender, enable BlenderMCP addon, click Start Server
+# 2. Run: python -m synthgen.mcp.server
+# 3. Connect from Claude Code or Cursor via .claude/mcp_servers.json
 ```
 
 ## Key context
 - Read `dev_tasks/003_mcp_stabilize_and_ground/POR.md` for the full plan with checkboxes
 - Read `dev_tasks/002_mcp_layer/HANDOFF.md` for the original MCP layer context
-- Read `knowledge/attribute_bridge.md` before implementing `wire_attr_bridge`
+- Read `knowledge/attribute_bridge.md` before modifying `wire_attr_bridge`
 - Read `knowledge/procedural_paradigm.md` for the "derive, don't set" philosophy
 - Blender 5.x removed `scene.node_tree` — compositor is `scene.compositing_node_group`

@@ -281,9 +281,9 @@ a deliberate simplification. Update POR or add a note.
 - [x] Near-miss suggestions via fuzzy matching
 - [x] All validation tested for gn, shader, and compositor tree types
 
-### Stage 4
-- [ ] `expose_parameter`, `add_driver`, `wire_attr_bridge`, `wire_compositor_pass` tools
-- [ ] Dirty-flag invalidation wired between Layer 2 and Layer 3
+### Stage 4 ✓
+- [x] `expose_parameter`, `add_driver`, `wire_attr_bridge`, `wire_compositor_pass` tools
+- [x] Dirty-flag invalidation wired between Layer 2 and Layer 3
 
 ### Stage 5
 - [ ] Layer 1 complete (7 tools), Layer 4 complete (4 tools)
