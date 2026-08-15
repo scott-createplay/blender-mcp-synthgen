@@ -18,6 +18,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 
 _IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc")
 
@@ -54,17 +55,31 @@ def _find_blender_addons_dir(version: str | None = None) -> str | None:
     return os.path.join(base, versions[0], "scripts", "addons") if versions else None
 
 
-def _blender_is_running() -> bool:
+def _kill_blender() -> bool:
+    """Kill all running Blender processes. Returns True if any were killed."""
+    killed = False
     try:
         if platform.system() == "Windows":
             out = subprocess.check_output(
                 ["tasklist", "/FI", "IMAGENAME eq blender.exe", "/NH"],
                 text=True, stderr=subprocess.DEVNULL,
             )
-            return "blender.exe" in out.lower()
-        return subprocess.run(["pgrep", "-x", "blender"], capture_output=True).returncode == 0
+            if "blender.exe" in out.lower():
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", "blender.exe"],
+                    capture_output=True, timeout=10,
+                )
+                killed = True
+        else:
+            result = subprocess.run(["pgrep", "-x", "blender"], capture_output=True, text=True)
+            if result.returncode == 0:
+                subprocess.run(["pkill", "-9", "-x", "blender"], capture_output=True, timeout=10)
+                killed = True
     except Exception:
-        return False
+        pass
+    if killed:
+        time.sleep(1)
+    return killed
 
 
 def main():
@@ -75,9 +90,8 @@ def main():
     )
     args = parser.parse_args()
 
-    if _blender_is_running():
-        print("FAIL  Blender is running — close it first so locked files can be replaced.")
-        sys.exit(1)
+    if _kill_blender():
+        print("  Killed running Blender process(es)\n")
 
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     addon_src = os.path.join(repo_root, "addon", "synthgen_mcp")
