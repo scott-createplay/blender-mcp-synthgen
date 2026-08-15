@@ -30,6 +30,8 @@ Key files:
 - `src/synthgen/mcp/tools/blender.py` — mutation tools, `_run()`, `build_graph`
 - `src/synthgen/mcp/tools/verify.py` — `evaluate_object`, `get_modifier_inputs`, `list_tree_nodes`
 - `src/synthgen/mcp/tools/pipeline.py` — `set_parameter`, `sweep`
+- `addon/synthgen_mcp/server.py` — MCP server, `/health`, server instructions
+- `addon/synthgen_mcp/executor.py` — transport, `MainThreadExecutor`, version detection
 - `tests/test_mutation_hardening.py` — existing tests (267 passing)
 
 Deploy + validate after changes:
@@ -50,8 +52,117 @@ observability at every step.
 - Offline-testable first — pytest without Blender for code-generation checks.
 - Backwards compatible — existing tool signatures don't break.
 - Sidecar saves only.
+- **Host-side version routing** — Blender version cached on transport at
+  startup, used at code-gen time. No `if bpy.app.version` in generated code.
+  MCP server instructions are dynamic and include version + API mode, injected
+  every turn so the agent always knows which version it's connected to.
 
 ## Stages
+
+### Stage 0 — Version routing infrastructure
+
+**Priority: foundation.** Stages 2, 4, and 5 depend on this. Without it,
+every version-dependent fix is another inline `if bpy.app.version` branch
+embedded in generated code strings.
+
+#### Architectural decision
+
+The Blender version is detected once at startup via `/health` and cached on
+the host-side transport. Structured tools query the cached version at
+**code-generation time** and emit clean, branchless Python for the target
+version. The MCP server's `instructions` field is made dynamic to include the
+connected version and API mode — this is injected into the agent's context on
+every turn by the MCP protocol, surviving context compression in long chats.
+
+This means:
+- Generated code is native to the target version (works as a standalone script).
+- The agent cannot hallucinate cross-version API calls in structured tools.
+- `execute_python` (the ungrounded escape hatch) gets version guidance via the
+  dynamic instructions — probabilistic, not enforced, but sufficient.
+
+#### 0.1 Cache Blender version on transport
+
+**File:** `addon/synthgen_mcp/server.py`
+
+The version is already read at startup (`_blender_version`). Expose it so that
+tool code-gen functions can query it:
+
+```python
+def get_blender_version_tuple() -> tuple[int, ...]:
+    """Cached Blender version as (major, minor, patch)."""
+    ...
+```
+
+Tools import and call this to decide which code path to emit.
+
+#### 0.2 Dynamic MCP server instructions
+
+**File:** `addon/synthgen_mcp/server.py`
+
+Replace the static `instructions` string with a dynamic one built at startup
+that includes:
+
+```
+Connected to Blender {major}.{minor}.{patch}.
+API mode: 5.x — bracket access on properties.inputs,
+compositing_node_group for compositor, engine ID BLENDER_EEVEE.
+```
+
+(Or the 4.x equivalents if `major < 5`.)
+
+This appears in the agent's system context on every turn.
+
+#### 0.3 Version-aware code-gen helpers
+
+**File:** `src/synthgen/mcp/tools/compat.py` (new)
+
+Thin helper functions that emit version-correct **code snippets** (strings),
+not runtime adapters. Used by structured tools at code-gen time:
+
+```python
+def emit_read_input(ver, mod_var, ident_expr):
+    """Return code string to read a modifier input value."""
+    if ver >= (5, 0, 0):
+        return f"{mod_var}.properties.inputs[{ident_expr}]['value']"
+    return f"{mod_var}[{ident_expr}]"
+
+def emit_write_input(ver, mod_var, ident_expr, value_expr):
+    """Return code string to write a modifier input value."""
+    ...
+
+def emit_iter_inputs(ver, mod_var, tree_var):
+    """Return code block that yields (identifier, value, attr_name)."""
+    ...
+
+def emit_compositor_tree(ver, scene_var):
+    """Return expression string for the compositor node tree."""
+    ...
+
+def eevee_engine_id(ver):
+    """Return the correct EEVEE engine string constant."""
+    ...
+```
+
+These are pure functions: `(version_tuple, ...) → str`. No bpy import, no
+Blender dependency. Fully testable offline.
+
+#### 0.4 Migrate existing version branches
+
+Replace all inline `if bpy.app.version >= (5, 0, 0)` blocks in generated code
+with calls to the compat helpers. After this step, generated code strings
+contain zero version branches — they are clean Python for the target version.
+
+**Files affected:**
+- `src/synthgen/mcp/tools/pipeline.py` — `set_parameter`, `sweep`
+- `src/synthgen/mcp/tools/verify.py` — `get_modifier_inputs`
+- `src/synthgen/mcp/tools/blender.py` — compositor tree lookups
+
+**Validation:** Existing tests pass. New unit tests confirm:
+- Compat helpers emit correct code for 4.x and 5.x inputs.
+- No generated code contains `bpy.app.version`.
+- MCP server instructions include version string.
+
+---
 
 ### Stage 1 — Viewport redraw after mutations (feedback B)
 
@@ -114,37 +225,20 @@ Keep `warnings: []` — it was confirmed useful.
 
 **File:** `src/synthgen/mcp/tools/verify.py` — `get_modifier_inputs` (~line 66)
 
-⚠ **A 005 fix exists but uses the WRONG access pattern.** The current code
-(lines 89-101) uses:
-```python
-for name in dir(mod.properties.inputs):       # WRONG
-    inp = getattr(mod.properties.inputs, name)  # WRONG
-    inp.default_value                            # WRONG
-```
+**Uses Stage 0 compat helpers.** Replace the inline version branching with
+calls to `emit_iter_inputs()` / `emit_read_input()`. The generated code
+uses bracket access on 5.x, `mod[ident]` on 4.x — no runtime branch.
 
-This returns `[]` on 5.2. The field agent confirmed the correct API is:
-```python
-mod.properties.inputs["Socket_0"].to_dict()
-# {'value': 220.0, 'type': 1, 'attribute_name': ''}
-```
-
-**Fix:** Replace the 5.x branch. Iterate the tree interface to get socket
-identifiers, then read values via bracket access:
-```python
-for item in mod.node_group.interface.items_tree:
-    if hasattr(item, 'identifier') and item.in_out == 'INPUT':
-        ident = item.identifier
-        prop = mod.properties.inputs[ident]
-        value = prop['value']
-        attr_name = prop.get('attribute_name', '')
-```
+⚠ **The 005 fix uses the WRONG access pattern.** The current code uses
+`dir()` + `getattr()` + `.default_value` — returns `[]` on 5.2. The correct
+5.x API is `mod.properties.inputs[ident]['value']` with identifiers from
+`mod.node_group.interface.items_tree`.
 
 Surface `attribute_name` — it distinguishes a literal value from an
 attribute-driven input.
 
-**Validation:** Unit test confirms `properties.inputs[` bracket access in
-generated code (NOT `getattr`). Live test with a modifier that has exposed
-parameters.
+**Validation:** Unit test confirms bracket access `properties.inputs[` in
+generated code for 5.x (NOT `getattr`). Confirms `mod[` for 4.x.
 
 ---
 
@@ -220,17 +314,12 @@ for _existing in tree.nodes:
 
 **File:** `src/synthgen/mcp/tools/pipeline.py` — `set_parameter` (~line 56)
 
-⚠ **A 005 fix exists but uses the WRONG access pattern.** The current code
-(lines 85-92) uses:
-```python
-inp = getattr(mod.properties.inputs, socket_identifier, None)  # WRONG
-inp.default_value = value                                        # WRONG
-```
+**Uses Stage 0 compat helpers.** Replace the inline version branching with
+calls to `emit_write_input()`. The generated code uses bracket write on 5.x,
+`mod[ident] = v` on 4.x — no runtime branch.
 
-Same misfire as Stage 2.2. The field agent confirmed the correct API:
-```python
-mod.properties.inputs[socket_identifier]['value'] = value
-```
+⚠ **The 005 fix uses the WRONG access pattern.** The current code uses
+`getattr` + `.default_value` — same misfire as Stage 2.2.
 
 Also fix the same pattern in `sweep()` (~line 237) which has the same
 broken `getattr` + `.default_value` pattern.
@@ -240,8 +329,7 @@ main thread with no exception, and recovery requires force-quit. This killed
 the round-1 session.
 
 **Validation:** Unit test confirms bracket access `properties.inputs[` in
-generated code (NOT `getattr`). Live test: set a parameter and read it back
-via the fixed `get_modifier_inputs`.
+generated code for 5.x (NOT `getattr`). Confirms `mod[` for 4.x.
 
 ---
 
@@ -288,23 +376,16 @@ modifier reads `0.31`. The modifier input is not initialized from the
 interface default.
 
 **Fix:** After creating the interface socket in `expose_parameter`, find
-any modifiers using this tree and sync the input value:
-```python
-for obj in bpy.data.objects:
-    for mod in obj.modifiers:
-        if getattr(mod, 'node_group', None) == tree:
-            mod.properties.inputs[sock.identifier]['value'] = default
-```
-
-Use the bracket write path from Stage 4.
+any modifiers using this tree and sync the input value. **Uses Stage 0
+compat helpers** for the write path (`emit_write_input`).
 
 #### 5.4 EEVEE engine ID in `configure_render` docstring
 
 **File:** `src/synthgen/mcp/tools/blender.py` — `configure_render`
 
-Docstring still advertises the 4.x `BLENDER_EEVEE_NEXT`. In 5.x the ID is
-`BLENDER_EEVEE`. Update the docstring. If the tool validates the engine
-parameter, add version-branching.
+Docstring still advertises the 4.x `BLENDER_EEVEE_NEXT`. **Uses Stage 0
+`eevee_engine_id()`** to document the correct ID for the connected version.
+If the tool validates the engine parameter, add version-aware validation.
 
 **Validation:** Unit tests for int coercion of min/max, disabled socket
 filtering/annotation, modifier default sync code generation.
@@ -331,6 +412,7 @@ Discovered by the agent; encoding them removes most of the session friction:
 
 | Feedback | Stage | Step | File |
 |---|---|---|---|
+| (infrastructure) | 0 | 0.1–0.4 | `server.py`, `compat.py`, all tools |
 | A1 — links before params | 3 | 3.1 | `blender.py` |
 | A2 — no rollback | 3 | 3.2 | `blender.py` |
 | A3 — can't see existing nodes | 3 | 3.3 | `blender.py` |
