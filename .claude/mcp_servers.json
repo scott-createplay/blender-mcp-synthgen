@@ -1,5 +1,6 @@
 {
   "synthgen": {
+    "type": "sse",
     "url": "http://localhost:8400/sse"
   }
 }
