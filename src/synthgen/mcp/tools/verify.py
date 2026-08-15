@@ -161,12 +161,20 @@ def register(mcp: FastMCP, get_transport, get_blender_version=None) -> None:
                     "name": obj.name,
                     "type": obj.type,
                 }}
-                if eval_obj.data and hasattr(eval_obj.data, 'vertices'):
-                    mesh = eval_obj.data
-                    result["verts"] = len(mesh.vertices)
-                    result["edges"] = len(mesh.edges)
-                    result["faces"] = len(mesh.polygons)
-                    result["attributes"] = [a.name for a in mesh.attributes]
+                data = eval_obj.data
+                if data and hasattr(data, 'vertices'):
+                    result["mesh"] = {{"verts": len(data.vertices), "edges": len(data.edges), "faces": len(data.polygons)}}
+                if data and hasattr(data, 'points'):
+                    result["points"] = len(data.points)
+                if data and hasattr(data, 'curves'):
+                    result["curves"] = len(data.curves)
+                _inst = sum(1 for _i in dg.object_instances if _i.is_instance and _i.parent and _i.parent.original == obj)
+                result["instances"] = _inst
+                if data and hasattr(data, 'attributes'):
+                    _attrs = {{}}
+                    for _a in data.attributes:
+                        _attrs.setdefault(_a.domain, []).append(_a.name)
+                    result["attributes"] = _attrs
                 # Modifier info
                 mods = []
                 for mod in obj.modifiers:

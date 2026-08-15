@@ -49,6 +49,14 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
         transport = get_transport()
         if mutates:
             transport.mark_dirty()
+            code += (
+                "\ntry:\n"
+                "    for _w in bpy.context.window_manager.windows:\n"
+                "        for _a in _w.screen.areas:\n"
+                "            _a.tag_redraw()\n"
+                "except Exception:\n"
+                "    pass\n"
+            )
         result = transport.execute_python(code)
         if isinstance(result, dict):
             output = result.get("output", json.dumps(result))
@@ -657,30 +665,12 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
         parts.append("")
         parts.append("    node_map = {}")
 
-        # Create nodes
-        for i, ns in enumerate(nodes):
-            key = node_keys[i]
-            parts.append(f"    _n = tree.nodes.new({ns['type']!r})")
-            parts.append(f"    _n.name = {key!r}")
-            parts.append(f"    node_map[{key!r}] = _n")
+        # Seed node_map from existing tree (so links can reference GroupIn, GroupOut, etc.)
+        if not create_tree:
+            parts.append("    for _existing in tree.nodes:")
+            parts.append("        node_map[_existing.name] = _existing")
 
-        # Create links
-        for lk in _links:
-            fn, fs = lk["from_node"], lk["from_socket"]
-            tn, ts = lk["to_node"], lk["to_socket"]
-            parts.append(f"    _src = node_map[{fn!r}]")
-            parts.append(f"    _dst = node_map[{tn!r}]")
-            parts.append(f"    _osock = _src.outputs.get({fs!r})")
-            parts.append(f"    _isock = _dst.inputs.get({ts!r})")
-            parts.append("    if not _osock:")
-            parts.append(f'        print(json.dumps({{"error": "output socket " + {fs!r} + " not found on " + _src.name, "available": [s.identifier for s in _src.outputs]}}))')
-            parts.append("        raise SystemExit")
-            parts.append("    if not _isock:")
-            parts.append(f'        print(json.dumps({{"error": "input socket " + {ts!r} + " not found on " + _dst.name, "available": [s.identifier for s in _dst.inputs]}}))')
-            parts.append("        raise SystemExit")
-            parts.append("    tree.links.new(_osock, _isock)")
-
-        # Expose parameters
+        # Expose parameters (before nodes — Group Input outputs ARE the interface)
         for pm in _parameters:
             stype = pm["socket_type"]
             sname = pm["name"]
@@ -693,9 +683,11 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
                 else:
                     parts.append(f"        _sock.default_value = {dval!r}")
             if "min" in pm:
-                parts.append(f"        _sock.min_value = {pm['min']!r}")
+                mval = f"int({pm['min']!r})" if stype == "NodeSocketInt" else repr(pm['min'])
+                parts.append(f"        _sock.min_value = {mval}")
             if "max" in pm:
-                parts.append(f"        _sock.max_value = {pm['max']!r}")
+                mval = f"int({pm['max']!r})" if stype == "NodeSocketInt" else repr(pm['max'])
+                parts.append(f"        _sock.max_value = {mval}")
             parts.append("    except Exception as _pe:")
             parts.append("        try:")
             parts.append("            tree.interface.remove(_sock)")
@@ -704,15 +696,38 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
             parts.append('        print(json.dumps({"error": "expose_parameter failed", "message": str(_pe)}))')
             parts.append("        raise SystemExit")
 
-        # Set socket defaults
+        # Create nodes
+        for i, ns in enumerate(nodes):
+            key = node_keys[i]
+            parts.append(f"    _n = tree.nodes.new({ns['type']!r})")
+            parts.append(f"    _n.name = {key!r}")
+            parts.append(f"    node_map[{key!r}] = _n")
+
+        # Set socket defaults (before links — links can trigger evaluation)
         for df in _defaults:
             dn, ds, dv = df["node"], df["socket"], df["value"]
             parts.append(f"    _dn = node_map[{dn!r}]")
             parts.append(f"    _ds = _dn.inputs.get({ds!r})")
             parts.append("    if not _ds:")
-            parts.append(f'        print(json.dumps({{"error": "input socket " + {ds!r} + " not found on " + _dn.name, "available": [s.identifier for s in _dn.inputs]}}))')
+            parts.append(f'        print(json.dumps({{"error": "input socket " + {ds!r} + " not found on " + _dn.name, "available": [s.identifier + (" (disabled)" if not s.enabled else "") for s in _dn.inputs]}}))')
             parts.append("        raise SystemExit")
             parts.append(f"    _ds.default_value = {dv!r}")
+
+        # Create links (last — sockets and defaults must exist first)
+        for lk in _links:
+            fn, fs = lk["from_node"], lk["from_socket"]
+            tn, ts = lk["to_node"], lk["to_socket"]
+            parts.append(f"    _src = node_map[{fn!r}]")
+            parts.append(f"    _dst = node_map[{tn!r}]")
+            parts.append(f"    _osock = _src.outputs.get({fs!r})")
+            parts.append(f"    _isock = _dst.inputs.get({ts!r})")
+            parts.append("    if not _osock:")
+            parts.append(f'        print(json.dumps({{"error": "output socket " + {fs!r} + " not found on " + _src.name, "available": [s.identifier + (" (disabled)" if not s.enabled else "") for s in _src.outputs]}}))')
+            parts.append("        raise SystemExit")
+            parts.append("    if not _isock:")
+            parts.append(f'        print(json.dumps({{"error": "input socket " + {ts!r} + " not found on " + _dst.name, "available": [s.identifier + (" (disabled)" if not s.enabled else "") for s in _dst.inputs]}}))')
+            parts.append("        raise SystemExit")
+            parts.append("    tree.links.new(_osock, _isock)")
 
         # Auto-layout nodes
         for line in _layout_code("tree").splitlines():
@@ -734,7 +749,11 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
 
         # Exception handlers
         parts.append("except SystemExit:")
-        parts.append("    pass")
+        parts.append("    if created_tree:")
+        parts.append("        try:")
+        parts.append("            bpy.data.node_groups.remove(tree)")
+        parts.append("        except Exception:")
+        parts.append("            pass")
         parts.append("except Exception as _e:")
         parts.append("    if created_tree:")
         parts.append("        try:")
@@ -917,9 +936,9 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
                     src_sock = src_node.outputs.get({from_socket!r})
                     dst_sock = dst_node.inputs.get({to_socket!r})
                     if not src_sock:
-                        print(f"ERROR: output socket {from_socket!r} not found on {{src_node.name}}. Available: {{[s.identifier for s in src_node.outputs]}}")
+                        print(f"ERROR: output socket {from_socket!r} not found on {{src_node.name}}. Available: {{[s.identifier + (' (disabled)' if not s.enabled else '') for s in src_node.outputs]}}")
                     elif not dst_sock:
-                        print(f"ERROR: input socket {to_socket!r} not found on {{dst_node.name}}. Available: {{[s.identifier for s in dst_node.inputs]}}")
+                        print(f"ERROR: input socket {to_socket!r} not found on {{dst_node.name}}. Available: {{[s.identifier + (' (disabled)' if not s.enabled else '') for s in dst_node.inputs]}}")
                     else:
                         tree.links.new(src_sock, dst_sock)
                         print(f"Linked {{src_node.name}}.{{src_sock.identifier}} -> {{dst_node.name}}.{{dst_sock.identifier}}")
@@ -1112,6 +1131,19 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
                 f"{indent}            refreshed += 1",
             ]
 
+        def _sync_modifier_default_lines(indent: str) -> list[str]:
+            from synthgen.mcp.tools.compat import emit_write_input
+            write_stmt = emit_write_input(_ver(), "_mod", "sock.identifier", "sock.default_value")
+            return [
+                f"{indent}for _obj in bpy.data.objects:",
+                f"{indent}    for _mod in _obj.modifiers:",
+                f"{indent}        if getattr(_mod, 'node_group', None) == tree:",
+                f"{indent}            try:",
+                f"{indent}                {write_stmt}",
+                f"{indent}            except Exception:",
+                f"{indent}                pass",
+            ]
+
         has_assignments = default_value is not None or min_value is not None or max_value is not None
         if has_assignments:
             lines.append("    try:")
@@ -1121,9 +1153,13 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
                 else:
                     lines.append(f"        sock.default_value = {default_value!r}")
             if min_value is not None:
-                lines.append(f"        sock.min_value = {min_value!r}")
+                mval = f"int({min_value!r})" if socket_type == "NodeSocketInt" else repr(min_value)
+                lines.append(f"        sock.min_value = {mval}")
             if max_value is not None:
-                lines.append(f"        sock.max_value = {max_value!r}")
+                mval = f"int({max_value!r})" if socket_type == "NodeSocketInt" else repr(max_value)
+                lines.append(f"        sock.max_value = {mval}")
+            if default_value is not None:
+                lines.extend(_sync_modifier_default_lines("        "))
             lines.extend(_refresh_lines("        "))
             lines.append(_success_print("        "))
             lines.append("    except Exception as _e:")

@@ -230,7 +230,7 @@ class TestExposeParameterRollback:
             socket_name="Radius",
         )
         code = transport.execute_python.call_args_list[0][0][0]
-        assert "try:" not in code
+        assert "    try:" not in code
         assert "tree.interface.remove(sock)" not in code
 
 
@@ -915,3 +915,218 @@ class TestAutoLayout:
         code = transport.execute_python.call_args_list[0][0][0]
         assert "_al_nodes" in code
         assert "laid_out" in code
+
+
+# --- 006 Round 2 hardening ---------------------------------------------------
+
+class TestViewportRedraw:
+    """Stage 1.1 — tag_redraw after mutating calls."""
+
+    def test_mutating_run_includes_tag_redraw(self, registered_tools):
+        fns, transport = registered_tools
+        fns["create_object"](name="Cube", type="MESH")
+        code = transport.execute_python.call_args[0][0]
+        assert "tag_redraw()" in code
+
+    def test_readonly_run_excludes_tag_redraw(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Cube")
+        code = transport.execute_python.call_args[0][0]
+        assert "tag_redraw" not in code
+
+
+class TestEvaluateObjectMultiComponent:
+    """Stage 2.1 — evaluate_object reports instances, points, curves, attributes by domain."""
+
+    def test_checks_instances(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Scatter")
+        code = transport.execute_python.call_args[0][0]
+        assert "object_instances" in code
+
+    def test_checks_points(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Cloud")
+        code = transport.execute_python.call_args[0][0]
+        assert "hasattr(data, 'points')" in code
+
+    def test_checks_curves(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Hair")
+        code = transport.execute_python.call_args[0][0]
+        assert "hasattr(data, 'curves')" in code
+
+    def test_groups_attributes_by_domain(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Scatter")
+        code = transport.execute_python.call_args[0][0]
+        assert "_a.domain" in code
+        assert "setdefault" in code
+
+    def test_mesh_nested_under_mesh_key(self, verify_tools):
+        fns, transport = verify_tools
+        fns["evaluate_object"](object_name="Cube")
+        code = transport.execute_python.call_args[0][0]
+        assert '"mesh"' in code
+        assert "data.vertices" in code
+
+
+class TestBuildGraphOrdering:
+    """Stage 3.1 — parameters before nodes, links after defaults."""
+
+    def test_params_before_nodes(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="Test",
+            nodes=[{"type": "GeometryNodeDistributePointsOnFaces"}],
+            parameters=[{"socket_type": "NodeSocketFloat", "name": "Size"}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert code.index("interface.new_socket") < code.index("tree.nodes.new")
+
+    def test_links_after_defaults(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="Test",
+            nodes=[
+                {"type": "GeometryNodeDistributePointsOnFaces", "name": "A"},
+                {"type": "GeometryNodeSetPosition", "name": "B"},
+            ],
+            links=[{"from_node": "A", "from_socket": "Points", "to_node": "B", "to_socket": "Geometry"}],
+            defaults=[{"node": "A", "socket": "Density", "value": 5.0}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert code.index("default_value") < code.index("links.new")
+
+
+class TestBuildGraphSystemExitRollback:
+    """Stage 3.2 — SystemExit handler removes tree if created."""
+
+    def test_systemexit_removes_tree(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="Test",
+            nodes=[{"type": "GeometryNodeDistributePointsOnFaces"}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        se_idx = code.index("except SystemExit:")
+        ex_idx = code.index("except Exception as _e:")
+        systemexit_block = code[se_idx:ex_idx]
+        assert "node_groups.remove" in systemexit_block
+
+
+class TestBuildGraphExistingTreeNodeMap:
+    """Stage 3.3 — node_map seeded from existing tree when create_tree=false."""
+
+    def test_existing_tree_seeds_node_map(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="Existing",
+            create_tree=False,
+            nodes=[],
+            links=[{"from_node": "Group Input", "from_socket": "Size", "to_node": "A", "to_socket": "Scale"}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "for _existing in tree.nodes" in code
+
+    def test_new_tree_does_not_seed_node_map(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="New",
+            create_tree=True,
+            nodes=[{"type": "GeometryNodeDistributePointsOnFaces"}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "for _existing in tree.nodes" not in code
+
+
+class TestIntCoercionMinMax:
+    """Stage 5.1 — int() coercion for min_value/max_value on NodeSocketInt."""
+
+    def test_expose_parameter_int_min_max(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Test",
+            socket_type="NodeSocketInt",
+            socket_name="Count",
+            default_value=5,
+            min_value=0.0,
+            max_value=100.0,
+        )
+        code = transport.execute_python.call_args[0][0]
+        assert "int(0.0)" in code
+        assert "int(100.0)" in code
+
+    def test_expose_parameter_float_no_int_coercion(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Test",
+            socket_type="NodeSocketFloat",
+            socket_name="Scale",
+            min_value=0.0,
+            max_value=10.0,
+        )
+        code = transport.execute_python.call_args[0][0]
+        assert "int(0.0)" not in code
+        assert "int(10.0)" not in code
+
+    def test_build_graph_int_min_max(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="Test",
+            nodes=[{"type": "GeometryNodeDistributePointsOnFaces"}],
+            parameters=[{"socket_type": "NodeSocketInt", "name": "Count", "default": 5, "min": 0.0, "max": 100.0}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "int(0.0)" in code
+        assert "int(100.0)" in code
+
+
+class TestDisabledSocketAnnotation:
+    """Stage 5.2 — disabled sockets annotated in error messages."""
+
+    def test_link_sockets_error_annotates_disabled(self, registered_tools):
+        fns, transport = registered_tools
+        fns["link_sockets"]("MyTree", "A", "out", "B", "in", tree_context="gn")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "(disabled)" in code
+
+    def test_build_graph_link_error_annotates_disabled(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="Test",
+            nodes=[
+                {"type": "GeometryNodeDistributePointsOnFaces", "name": "A"},
+                {"type": "GeometryNodeSetPosition", "name": "B"},
+            ],
+            links=[{"from_node": "A", "from_socket": "Points", "to_node": "B", "to_socket": "Geometry"}],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "(disabled)" in code
+
+
+class TestModifierDefaultSync:
+    """Stage 5.3 — expose_parameter syncs modifier input to default value."""
+
+    def test_syncs_modifier_defaults_when_default_provided(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Test",
+            socket_type="NodeSocketFloat",
+            socket_name="Scale",
+            default_value=0.5,
+        )
+        code = transport.execute_python.call_args[0][0]
+        assert "sock.default_value" in code
+        assert "node_group" in code
+        assert "properties.inputs" in code or "_mod[" in code
+
+    def test_no_sync_without_default(self, registered_tools):
+        fns, transport = registered_tools
+        fns["expose_parameter"](
+            tree_name="Test",
+            socket_type="NodeSocketFloat",
+            socket_name="Scale",
+        )
+        code = transport.execute_python.call_args[0][0]
+        assert "sock.default_value" not in code
