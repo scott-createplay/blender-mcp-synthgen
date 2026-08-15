@@ -12,6 +12,7 @@ import pytest
 from unittest.mock import MagicMock
 
 from synthgen.mcp.tools.compat import (
+    DEFAULT_VIEWPOINT,
     build_server_instructions,
     eevee_engine_id,
     emit_compositor_tree,
@@ -143,10 +144,63 @@ class TestBuildServerInstructions:
         assert "mod[ident]" in instructions
         assert "BLENDER_EEVEE_NEXT" in instructions
 
-    def test_includes_grounding_description(self):
+    def test_includes_tool_rules(self):
         for ver in (VER_4X, VER_5X):
             instructions = build_server_instructions(ver)
-            assert "Schema-validated" in instructions
+            assert "## Tool rules" in instructions
+            assert "Schema first" in instructions
+
+    def test_no_viewpoint_by_default(self):
+        instructions = build_server_instructions(VER_5X)
+        assert "## Viewpoint" not in instructions
+
+    def test_viewpoint_included_when_provided(self):
+        instructions = build_server_instructions(VER_5X, viewpoint="custom viewpoint text")
+        assert "## Tool rules" in instructions
+        assert "## Viewpoint" in instructions
+        assert "custom viewpoint text" in instructions
+
+    def test_empty_viewpoint_omits_section(self):
+        instructions = build_server_instructions(VER_5X, viewpoint="")
+        assert "## Viewpoint" not in instructions
+
+    def test_whitespace_viewpoint_omits_section(self):
+        instructions = build_server_instructions(VER_5X, viewpoint="   \n  ")
+        assert "## Viewpoint" not in instructions
+
+
+# ---------------------------------------------------------------------------
+# Addon preference default stays in sync with compat.DEFAULT_VIEWPOINT
+# ---------------------------------------------------------------------------
+
+class TestAddonViewpointDefaultInSync:
+    """addon/synthgen_mcp/__init__.py hardcodes a copy of DEFAULT_VIEWPOINT
+    as a StringProperty default (bpy requires a literal at class-definition
+    time). Parse the source with ast instead of importing the module,
+    since __init__.py imports bpy unconditionally.
+    """
+
+    def test_default_viewpoint_matches_compat(self):
+        import ast
+        import os
+
+        init_path = os.path.join(
+            os.path.dirname(__file__), "..", "addon", "synthgen_mcp", "__init__.py"
+        )
+        with open(init_path, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        tree = ast.parse(source, filename=init_path)
+        value = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
+                if "_DEFAULT_VIEWPOINT" in targets:
+                    value = ast.literal_eval(node.value)
+                    break
+
+        assert value is not None, "_DEFAULT_VIEWPOINT not found in addon __init__.py"
+        assert value == DEFAULT_VIEWPOINT
 
 
 # ---------------------------------------------------------------------------

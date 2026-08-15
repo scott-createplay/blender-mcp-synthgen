@@ -24,6 +24,47 @@ bl_info = {
 
 _addon_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Keep in sync with `synthgen.mcp.tools.compat.DEFAULT_VIEWPOINT` — the
+# addon's bpy.props.StringProperty default must be a string literal at
+# class-definition time, so this is a copy of the canonical text in
+# compat.py. A test asserts the two stay in sync.
+_DEFAULT_VIEWPOINT = (
+    "You are not editing a scene. You are authoring a machine that\n"
+    "produces scenes. Every node graph, driver, and expression you\n"
+    "create is part of a system with inputs, controls, and outputs —\n"
+    "closer to a reusable Houdini HDA than a saved file.\n"
+    "\n"
+    "First instinct: derive. Compute values from scene signals — position,\n"
+    "normal, curvature, proximity, noise — rather than assigning constants.\n"
+    "Derived values can be swept and randomized; hand-set values are dead\n"
+    "ends. If a property can't be varied from code, it's invisible to a\n"
+    "parameter sweep.\n"
+    "\n"
+    "Blender's procedural surface is not just Geometry Nodes. Shader nodes\n"
+    "handle appearance. The compositor handles image-space passes and\n"
+    "labels. Drivers wire parametric relationships across the scene graph.\n"
+    "These connect through named attributes and render passes — one\n"
+    "interconnected machine, not separate tools.\n"
+    "\n"
+    "Expose controls. Surface the parameters that matter and bury the\n"
+    "rest. The interface of your system is as important as its internals.\n"
+    "\n"
+    "Verify across the parameter space. One seed, one frame, one camera\n"
+    "angle is never proof. Vary inputs and confirm the output stays\n"
+    "coherent under change.\n"
+    "\n"
+    "Before building, read the relevant knowledge file:\n"
+    "- knowledge/procedural_paradigm.md — how to think procedurally\n"
+    "- knowledge/houdini_to_geonodes.md — Houdini SOPs → Geometry Nodes\n"
+    "- knowledge/attribute_bridge.md — GN ↔ shader cross-talk\n"
+    "- knowledge/cop_to_compositor.md — compositor passes and labels\n"
+    "- knowledge/scene_graph_contexts.md — cross-context edge model\n"
+    "\n"
+    "When the user asks for direct scene manipulation — specific placement,\n"
+    "specific values — do exactly that. This posture is a default, not a\n"
+    "cage."
+)
+
 
 def _setup_vendor(vendor: str) -> None:
     """Add vendor/ and its pywin32 subdirs to sys.path + DLL search path."""
@@ -110,15 +151,124 @@ class SynthgenMCPPreferences(bpy.types.AddonPreferences):
         ],
         default="WARNING",
     )
+    viewpoint: bpy.props.StringProperty(
+        name="Agent Viewpoint",
+        description=(
+            "Default posture for AI agents connecting via MCP. "
+            "Sets how agents think about Blender — procedural-first, "
+            "traditional modeling, or custom. Clear for no viewpoint. "
+            "Changes take effect after server restart."
+        ),
+        default=_DEFAULT_VIEWPOINT,
+        maxlen=0,
+    )
 
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "port")
         layout.prop(self, "auto_start")
         layout.prop(self, "log_level")
+        layout.separator()
+        layout.label(text="Agent Viewpoint:")
+
+        box = layout.box()
+        box.label(text=f"Active viewpoint: {len(self.viewpoint)} chars", icon="TEXT")
+        row = box.row(align=True)
+        row.operator("synthgen.open_viewpoint_editor", icon="WINDOW")
+        row.operator("synthgen.apply_viewpoint", icon="FILE_REFRESH")
+        row.operator("synthgen.reset_viewpoint", icon="LOOP_BACK")
 
 
-_classes = [SynthgenMCPPreferences]
+class SYNTHGEN_OT_open_viewpoint_editor(bpy.types.Operator):
+    bl_idname = "synthgen.open_viewpoint_editor"
+    bl_label = "Edit Viewpoint"
+    bl_description = "Open the viewpoint text in the system text editor"
+
+    def execute(self, context):
+        import subprocess
+        import tempfile
+
+        prefs = context.preferences.addons.get(__package__)
+        content = prefs.preferences.viewpoint if prefs else _DEFAULT_VIEWPOINT
+
+        viewpoint_dir = os.path.join(_addon_dir, ".viewpoint")
+        os.makedirs(viewpoint_dir, exist_ok=True)
+        filepath = os.path.join(viewpoint_dir, "viewpoint.txt")
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        if sys.platform == "win32":
+            os.startfile(filepath)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", filepath])
+        else:
+            subprocess.Popen(["xdg-open", filepath])
+
+        self.report({"INFO"}, f"Opened {filepath} — edit, save, then click Apply")
+        return {"FINISHED"}
+
+
+class SYNTHGEN_OT_apply_viewpoint(bpy.types.Operator):
+    bl_idname = "synthgen.apply_viewpoint"
+    bl_label = "Apply & Restart Server"
+    bl_description = (
+        "Read viewpoint.txt, save to preferences, and restart the MCP server"
+    )
+
+    def execute(self, context):
+        filepath = os.path.join(_addon_dir, ".viewpoint", "viewpoint.txt")
+        if os.path.isfile(filepath):
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+        else:
+            content = _DEFAULT_VIEWPOINT
+
+        prefs = context.preferences.addons.get(__package__)
+        if prefs is None:
+            self.report({"ERROR"}, "Synthgen MCP preferences not found")
+            return {"CANCELLED"}
+        prefs.preferences.viewpoint = content
+
+        from . import server as srv
+        from .ui import start_watchdog, stop_watchdog
+
+        was_running = srv.is_running()
+        stop_watchdog()
+        srv.stop()
+        if was_running:
+            try:
+                srv.start(prefs.preferences.port, _addon_dir, viewpoint=content)
+                start_watchdog()
+            except Exception as exc:
+                self.report({"ERROR"}, f"Failed to restart server: {exc}")
+                return {"CANCELLED"}
+            self.report({"INFO"}, "Viewpoint applied and server restarted")
+        else:
+            self.report({"INFO"}, "Viewpoint applied (server not running)")
+        return {"FINISHED"}
+
+
+class SYNTHGEN_OT_reset_viewpoint(bpy.types.Operator):
+    bl_idname = "synthgen.reset_viewpoint"
+    bl_label = "Reset to Default"
+    bl_description = "Reset the viewpoint file and preference to the default text"
+
+    def execute(self, context):
+        viewpoint_dir = os.path.join(_addon_dir, ".viewpoint")
+        os.makedirs(viewpoint_dir, exist_ok=True)
+        filepath = os.path.join(viewpoint_dir, "viewpoint.txt")
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(_DEFAULT_VIEWPOINT)
+        self.report({"INFO"}, "Viewpoint file reset to default (click Apply to restart server)")
+        return {"FINISHED"}
+
+
+_classes = [
+    SynthgenMCPPreferences,
+    SYNTHGEN_OT_open_viewpoint_editor,
+    SYNTHGEN_OT_apply_viewpoint,
+    SYNTHGEN_OT_reset_viewpoint,
+]
 
 
 def register():
@@ -147,8 +297,9 @@ def _deferred_start():
     from .ui import start_watchdog
     prefs = bpy.context.preferences.addons.get(__package__)
     port = prefs.preferences.port if prefs else 8400
+    viewpoint = prefs.preferences.viewpoint if prefs else ""
     try:
-        srv.start(port, _addon_dir)
+        srv.start(port, _addon_dir, viewpoint=viewpoint)
         start_watchdog()
     except Exception:
         logger.exception("Failed to start MCP server")

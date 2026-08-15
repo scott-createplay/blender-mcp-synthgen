@@ -23,7 +23,7 @@ _blender_version: str | None = None
 _addon_version: str | None = None
 
 
-def _build_and_run(port: int, addon_dir: str) -> None:
+def _build_and_run(port: int, addon_dir: str, viewpoint: str = "") -> None:
     """Build the FastMCP instance, register tools, and run SSE server.
 
     This runs in a daemon thread. Blocks until the server shuts down.
@@ -47,7 +47,7 @@ def _build_and_run(port: int, addon_dir: str) -> None:
             "synthgen",
             host="127.0.0.1",
             port=port,
-            instructions=build_server_instructions(version),
+            instructions=build_server_instructions(version, viewpoint),
         )
         logger.info("Blender %s → schema dir %s", version, blender_dir)
 
@@ -105,7 +105,7 @@ def _build_and_run(port: int, addon_dir: str) -> None:
         logger.exception("MCP server thread crashed")
 
 
-def start(port: int, addon_dir: str) -> None:
+def start(port: int, addon_dir: str, viewpoint: str = "") -> None:
     """Start the SSE MCP server in a background daemon thread."""
     global _executor, _server_thread, _port, _shutdown_event
 
@@ -127,7 +127,7 @@ def start(port: int, addon_dir: str) -> None:
 
     _server_thread = threading.Thread(
         target=_build_and_run,
-        args=(port, addon_dir),
+        args=(port, addon_dir, viewpoint),
         daemon=True,
         name="synthgen-mcp-sse",
     )

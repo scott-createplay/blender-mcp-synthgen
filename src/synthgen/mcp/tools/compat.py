@@ -124,7 +124,62 @@ def eevee_engine_id(ver: tuple[int, ...]) -> str:
 # MCP server instructions
 # ---------------------------------------------------------------------------
 
-def build_server_instructions(ver: tuple[int, ...]) -> str:
+_BACKEND_INSTRUCTIONS = """
+## Tool rules
+
+- Schema first. Never guess node or socket identifiers. Call
+  `schema_find` / `schema_show` before creating or wiring nodes.
+  Socket label ≠ identifier.
+- Structured tools first. Use `add_node`, `link_sockets`,
+  `build_graph`, `set_socket_default` over `execute_python` when a
+  structured tool exists. `execute_python` is the escape hatch.
+- Verify after mutation. Mutations invalidate the graph cache.
+  After bulk changes, verify with `evaluate_object` or
+  `graph_snapshot`. Read-only tools (`schema_*`, `graph_*`) are
+  free — use them liberally.
+"""
+
+_DEFAULT_VIEWPOINT = """
+You are not editing a scene. You are authoring a machine that
+produces scenes. Every node graph, driver, and expression you
+create is part of a system with inputs, controls, and outputs —
+closer to a reusable Houdini HDA than a saved file.
+
+First instinct: derive. Compute values from scene signals — position,
+normal, curvature, proximity, noise — rather than assigning constants.
+Derived values can be swept and randomized; hand-set values are dead
+ends. If a property can't be varied from code, it's invisible to a
+parameter sweep.
+
+Blender's procedural surface is not just Geometry Nodes. Shader nodes
+handle appearance. The compositor handles image-space passes and
+labels. Drivers wire parametric relationships across the scene graph.
+These connect through named attributes and render passes — one
+interconnected machine, not separate tools.
+
+Expose controls. Surface the parameters that matter and bury the
+rest. The interface of your system is as important as its internals.
+
+Verify across the parameter space. One seed, one frame, one camera
+angle is never proof. Vary inputs and confirm the output stays
+coherent under change.
+
+Before building, read the relevant knowledge file:
+- knowledge/procedural_paradigm.md — how to think procedurally
+- knowledge/houdini_to_geonodes.md — Houdini SOPs → Geometry Nodes
+- knowledge/attribute_bridge.md — GN ↔ shader cross-talk
+- knowledge/cop_to_compositor.md — compositor passes and labels
+- knowledge/scene_graph_contexts.md — cross-context edge model
+
+When the user asks for direct scene manipulation — specific placement,
+specific values — do exactly that. This posture is a default, not a
+cage.
+"""
+
+DEFAULT_VIEWPOINT = _DEFAULT_VIEWPOINT.strip()
+
+
+def build_server_instructions(ver: tuple[int, ...], viewpoint: str = "") -> str:
     """Build the dynamic MCP server instructions string."""
     ver_str = ".".join(str(v) for v in ver)
 
@@ -142,9 +197,10 @@ def build_server_instructions(ver: tuple[int, ...]) -> str:
             f"engine ID BLENDER_EEVEE_NEXT for Eevee."
         )
 
-    return (
-        f"Connected to Blender {ver_str}. {api_notes}\n\n"
-        "Grounded Blender tools for procedural 3D synthetic data. "
-        "Schema-validated node/socket identifiers, scene-graph introspection, "
-        "and procedural authoring — never hallucinates Blender API names."
-    )
+    parts = [
+        f"Connected to Blender {ver_str}. {api_notes}",
+        _BACKEND_INSTRUCTIONS.strip(),
+    ]
+    if viewpoint.strip():
+        parts.append("## Viewpoint\n\n" + viewpoint.strip())
+    return "\n\n".join(parts)
