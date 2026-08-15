@@ -58,6 +58,52 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
     def _blender_dir() -> str | None:
         return get_blender_dir() if get_blender_dir else None
 
+    def _layout_code(tree_var: str = "tree") -> str:
+        """Return Python code that auto-layouts nodes in a node tree.
+
+        Simple topological layering: sinks (Group Output, unconnected outputs)
+        rightmost, sources leftmost, vertical spacing estimated from socket count.
+        """
+        return textwrap.dedent(f"""\
+            # --- auto-layout ---
+            _al_nodes = list({tree_var}.nodes)
+            if len(_al_nodes) > 1:
+                _al_fwd = {{n.name: set() for n in _al_nodes}}
+                _al_back = {{n.name: set() for n in _al_nodes}}
+                for _lnk in {tree_var}.links:
+                    _al_fwd[_lnk.from_node.name].add(_lnk.to_node.name)
+                    _al_back[_lnk.to_node.name].add(_lnk.from_node.name)
+                _al_sinks = [n.name for n in _al_nodes if not _al_fwd[n.name]]
+                if not _al_sinks:
+                    _al_sinks = [_al_nodes[-1].name]
+                _al_layer = {{}}
+                _al_q = list(_al_sinks)
+                for _s in _al_q:
+                    _al_layer[_s] = 0
+                while _al_q:
+                    _cur = _al_q.pop(0)
+                    for _p in _al_back.get(_cur, []):
+                        _nd = _al_layer[_cur] + 1
+                        if _p not in _al_layer or _al_layer[_p] < _nd:
+                            _al_layer[_p] = _nd
+                            _al_q.append(_p)
+                for _n in _al_nodes:
+                    if _n.name not in _al_layer:
+                        _al_layer[_n.name] = 0
+                _al_cols = {{}}
+                for _nm, _cl in _al_layer.items():
+                    _al_cols.setdefault(_cl, []).append(_nm)
+                _al_mx = max(_al_cols) if _al_cols else 0
+                for _cl, _nms in _al_cols.items():
+                    _x = (_al_mx - _cl) * 300
+                    _y = 0
+                    for _nm in _nms:
+                        _nd = {tree_var}.nodes.get(_nm)
+                        if _nd:
+                            _nd.location = (_x, _y)
+                            _y -= max(150, 30 * (len(_nd.inputs) + len(_nd.outputs)))
+        """)
+
     # --- Layer 1: Scene Setup -----------------------------------------------
 
     @mcp.tool()
@@ -659,6 +705,10 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             parts.append("        raise SystemExit")
             parts.append(f"    _ds.default_value = {dv!r}")
 
+        # Auto-layout nodes
+        for line in _layout_code("tree").splitlines():
+            parts.append(f"    {line}" if line.strip() else "")
+
         # Build result JSON
         parts.append("    _nodes_out = []")
         parts.append("    for _key, _node in node_map.items():")
@@ -808,6 +858,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 print("ERROR: tree not found")
             else:
         """) + textwrap.indent(create_lines, "    ")
+        code += textwrap.indent(_layout_code("tree"), "    ")
         return _run(code, mutates=True)
 
     @mcp.tool()
@@ -841,7 +892,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         else:
             tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
 
-        return _run(textwrap.dedent(f"""\
+        code = textwrap.dedent(f"""\
             import bpy
             tree = {tree_lookup}
             if not tree:
@@ -863,7 +914,9 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                     else:
                         tree.links.new(src_sock, dst_sock)
                         print(f"Linked {{src_node.name}}.{{src_sock.identifier}} -> {{dst_node.name}}.{{dst_sock.identifier}}")
-        """), mutates=True)
+        """)
+        code += textwrap.indent(_layout_code("tree"), "    ")
+        return _run(code, mutates=True)
 
     @mcp.tool()
     def set_node_property(
@@ -958,6 +1011,42 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                     sock.default_value = {value!r}
                     print(f"Set {{node.name}}.{socket_name} = {value!r}")
         """), mutates=True)
+
+    @mcp.tool()
+    def layout_node_tree(tree_name: str, tree_context: str = "gn") -> str:
+        """Auto-layout nodes in a node tree. Arranges nodes right-to-left
+        using topological layering: outputs rightmost, sources leftmost.
+
+        Called automatically by add_node, link_sockets, and build_graph.
+        Use this standalone tool to re-layout an existing tree.
+
+        Args:
+            tree_name: Name of the node tree.
+            tree_context: "gn", "shader", or "compositor".
+        """
+        if tree_context == "shader":
+            tree_lookup = f"bpy.data.materials.get({tree_name!r}).node_tree"
+        elif tree_context == "compositor":
+            tree_lookup = "bpy.context.scene.compositing_node_group"
+        else:
+            tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
+
+        code = textwrap.dedent(f"""\
+            import bpy, json
+            tree = {tree_lookup}
+            if not tree:
+                print("ERROR: tree not found")
+            else:
+        """)
+        code += textwrap.indent(_layout_code("tree"), "    ")
+        code += textwrap.indent(textwrap.dedent("""\
+            print(json.dumps({
+                "tree": tree.name,
+                "nodes": len(tree.nodes),
+                "laid_out": True,
+            }))
+        """), "    ")
+        return _run(code, mutates=True)
 
     # --- Layer 2b: Procedural Authoring (Stage 4) ----------------------------
 

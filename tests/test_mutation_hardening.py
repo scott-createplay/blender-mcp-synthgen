@@ -852,3 +852,46 @@ class TestHealthVersionFields:
         status = self.server.get_status()
         assert status["addon_version"] == "0.2.0"
         self.server._addon_version = None
+
+
+# --- auto-layout --------------------------------------------------------------
+
+class TestAutoLayout:
+    """Auto-layout code is injected into build_graph, add_node, link_sockets."""
+
+    def test_layout_tool_registered(self, registered_tools):
+        fns, _ = registered_tools
+        assert "layout_node_tree" in fns
+
+    def test_build_graph_includes_layout(self, registered_tools):
+        fns, transport = registered_tools
+        fns["build_graph"](
+            tree_name="test",
+            nodes=[
+                {"type": "GeometryNodeMeshGrid", "name": "grid"},
+                {"type": "GeometryNodeInputMeshFaceArea", "name": "area"},
+            ],
+        )
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "_al_nodes" in code
+        assert "_al_layer" in code
+        assert ".location" in code
+
+    def test_add_node_includes_layout(self, registered_tools):
+        fns, transport = registered_tools
+        fns["add_node"]("MyTree", "GeometryNodeMeshGrid", tree_context="gn")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "_al_nodes" in code
+
+    def test_link_sockets_includes_layout(self, registered_tools):
+        fns, transport = registered_tools
+        fns["link_sockets"]("MyTree", "A", "out", "B", "in", tree_context="gn")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "_al_nodes" in code
+
+    def test_layout_standalone_generates_valid_code(self, registered_tools):
+        fns, transport = registered_tools
+        fns["layout_node_tree"]("MyTree", tree_context="gn")
+        code = transport.execute_python.call_args_list[0][0][0]
+        assert "_al_nodes" in code
+        assert "laid_out" in code
