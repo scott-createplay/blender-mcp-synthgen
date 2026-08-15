@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 bl_info = {
     "name": "Synthgen MCP",
     "author": "synthgen",
-    "version": (0, 1, 0),
+    "version": (0, 2, 0),
     "blender": (4, 2, 0),
     "location": "View3D > Sidebar > Synthgen MCP",
     "description": "Procedural 3D synthetic data tools via MCP (SSE server)",
@@ -128,10 +128,10 @@ def register():
     _setup_paths()
 
     from . import deps
+    vendor = os.path.join(_addon_dir, "vendor")
     if not deps.deps_installed():
-        deps.install_deps(os.path.join(_addon_dir, "vendor"))
-        if os.path.join(_addon_dir, "vendor") not in sys.path:
-            sys.path.insert(0, os.path.join(_addon_dir, "vendor"))
+        deps.install_deps(vendor)
+        _setup_vendor(vendor)
 
     from . import ui
     ui.register()
@@ -144,10 +144,12 @@ def register():
 def _deferred_start():
     """Start the server after Blender finishes initialization."""
     from . import server as srv
+    from .ui import start_watchdog
     prefs = bpy.context.preferences.addons.get(__package__)
     port = prefs.preferences.port if prefs else 8400
     try:
         srv.start(port, _addon_dir)
+        start_watchdog()
     except Exception:
         logger.exception("Failed to start MCP server")
     return None
@@ -155,6 +157,8 @@ def _deferred_start():
 
 def unregister():
     from . import server as srv
+    from .ui import stop_watchdog
+    stop_watchdog()
     srv.stop()
 
     from . import ui

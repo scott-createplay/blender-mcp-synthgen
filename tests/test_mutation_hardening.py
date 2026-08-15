@@ -813,3 +813,42 @@ class TestBuildGraphDuplicateKeys:
         parsed = json.loads(result)
         assert "duplicate" in parsed["error"]
         transport.execute_python.assert_not_called()
+
+
+# --- /health version fields ---------------------------------------------------
+
+class TestHealthVersionFields:
+    """get_status() should include tools_hash, addon_version, blender_version."""
+
+    @pytest.fixture(autouse=True)
+    def _load_server(self):
+        """Import server.py directly via importlib, bypassing __init__ (needs bpy)."""
+        import importlib.util, types
+        spec = importlib.util.spec_from_file_location(
+            "synthgen_mcp_server",
+            "addon/synthgen_mcp/server.py",
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.server = mod
+
+    def test_get_status_includes_version_fields(self):
+        status = self.server.get_status()
+        assert "tools_hash" in status
+        assert "addon_version" in status
+        assert "blender_version" in status
+
+    def test_tools_hash_changes_with_tool_count(self):
+        import hashlib
+        old_hash = self.server._tools_hash
+
+        self.server._tools_hash = hashlib.sha256(b"a|b|c").hexdigest()[:12]
+        status = self.server.get_status()
+        assert status["tools_hash"] == self.server._tools_hash
+        self.server._tools_hash = old_hash
+
+    def test_addon_version_format(self):
+        self.server._addon_version = "0.2.0"
+        status = self.server.get_status()
+        assert status["addon_version"] == "0.2.0"
+        self.server._addon_version = None
