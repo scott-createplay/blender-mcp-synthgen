@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 
-def register(mcp: FastMCP, get_transport) -> None:
+def register(mcp: FastMCP, get_transport, get_blender_version=None) -> None:
 
     def _run(code: str) -> str:
         transport = get_transport()
@@ -18,6 +18,11 @@ def register(mcp: FastMCP, get_transport) -> None:
         if isinstance(result, dict):
             return result.get("output", json.dumps(result))
         return str(result)
+
+    def _ver() -> tuple[int, ...]:
+        if get_blender_version:
+            return get_blender_version()
+        return (5, 0, 0)
 
     @mcp.tool()
     def verify_attribute_exists(object_name: str, attribute_name: str) -> str:
@@ -74,7 +79,12 @@ def register(mcp: FastMCP, get_transport) -> None:
             object_name: Name of the object with the GN modifier.
             modifier_name: Name of the Geometry Nodes modifier.
         """
-        return _run(textwrap.dedent(f"""\
+        from synthgen.mcp.tools.compat import emit_iter_inputs
+
+        iter_block = emit_iter_inputs(_ver(), "mod")
+        iter_indented = textwrap.indent(iter_block, "        ")
+
+        code = textwrap.dedent(f"""\
             import bpy, json
             obj = bpy.data.objects.get({object_name!r})
             if not obj:
@@ -84,34 +94,10 @@ def register(mcp: FastMCP, get_transport) -> None:
                 if not mod:
                     print(f"ERROR: modifier {modifier_name!r} not found on {{obj.name}}. Available: {{[m.name for m in obj.modifiers]}}")
                 else:
-                    ver = bpy.app.version
-                    inputs = []
-                    if ver >= (5, 0, 0):
-                        # 5.x: use mod.properties.inputs
-                        for name in dir(mod.properties.inputs):
-                            if name.startswith('_'):
-                                continue
-                            inp = getattr(mod.properties.inputs, name, None)
-                            if inp is not None and hasattr(inp, 'default_value'):
-                                inputs.append({{
-                                    "identifier": name,
-                                    "name": getattr(inp, 'name', name),
-                                    "type": type(inp).__name__,
-                                    "value": inp.default_value if not hasattr(inp.default_value, '__len__') else list(inp.default_value),
-                                }})
-                    else:
-                        # 4.x: id-properties on the modifier
-                        if mod.node_group:
-                            for item in mod.node_group.interface.items_tree:
-                                if hasattr(item, 'identifier') and item.in_out == 'INPUT':
-                                    ident = item.identifier
-                                    try:
-                                        val = mod[ident]
-                                        inputs.append({{"identifier": ident, "name": item.name, "type": item.bl_socket_idname, "value": val}})
-                                    except (KeyError, TypeError):
-                                        inputs.append({{"identifier": ident, "name": item.name, "type": item.bl_socket_idname, "value": None}})
+        """) + iter_indented + textwrap.dedent(f"""\
                     print(json.dumps({{"object": {object_name!r}, "modifier": {modifier_name!r}, "inputs": inputs}}))
-        """))
+        """)
+        return _run(code)
 
     @mcp.tool()
     def list_tree_nodes(
@@ -132,7 +118,8 @@ def register(mcp: FastMCP, get_transport) -> None:
                 "tree = _mat.node_tree if _mat else None",
             ]
         elif tree_context == "compositor":
-            tree_lookup_lines = ["tree = bpy.context.scene.compositing_node_group"]
+            from synthgen.mcp.tools.compat import emit_compositor_tree
+            tree_lookup_lines = [f"tree = {emit_compositor_tree(_ver(), 'bpy.context.scene')}"]
         else:
             tree_lookup_lines = [f"tree = bpy.data.node_groups.get({tree_name!r})"]
 

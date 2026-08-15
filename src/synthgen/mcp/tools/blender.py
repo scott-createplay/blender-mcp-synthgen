@@ -11,12 +11,18 @@ import textwrap
 from typing import TYPE_CHECKING
 
 from synthgen.mcp.grounding import validate_node_type, validate_socket, validate_setting
+from synthgen.mcp.tools.compat import emit_compositor_tree
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 
-def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
+def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_version=None) -> None:
+
+    def _ver() -> tuple[int, ...]:
+        if get_blender_version:
+            return get_blender_version()
+        return (5, 0, 0)
 
     def _autosave() -> None:
         """Best-effort sidecar save. Call after compound operations, not every mutation."""
@@ -57,6 +63,9 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
 
     def _blender_dir() -> str | None:
         return get_blender_dir() if get_blender_dir else None
+
+    def _compositor_tree_expr() -> str:
+        return emit_compositor_tree(_ver(), "bpy.context.scene")
 
     def _layout_code(tree_var: str = "tree") -> str:
         """Return Python code that auto-layouts nodes in a node tree.
@@ -321,7 +330,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         are changed — omitted ones keep their current values.
 
         Args:
-            engine: Render engine — "CYCLES", "BLENDER_EEVEE_NEXT", "BLENDER_WORKBENCH".
+            engine: Render engine — "CYCLES", "BLENDER_EEVEE" (5.x) / "BLENDER_EEVEE_NEXT" (4.x), "BLENDER_WORKBENCH".
             resolution_x: Output width in pixels.
             resolution_y: Output height in pixels.
             samples: Render samples (Cycles: path tracing samples, Eevee: ignored).
@@ -638,7 +647,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 parts.append(f"    _mat = bpy.data.materials.get({tree_name!r})")
                 parts.append("    tree = _mat.node_tree if _mat else None")
             elif tree_context == "compositor":
-                parts.append("    tree = bpy.context.scene.compositing_node_group")
+                parts.append(f"    tree = {_compositor_tree_expr()}")
             else:
                 parts.append(f"    tree = bpy.data.node_groups.get({tree_name!r})")
             parts.append("    if not tree:")
@@ -817,7 +826,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         if tree_context == "shader":
             tree_lookup = f"bpy.data.materials.get({tree_name!r}).node_tree"
         elif tree_context == "compositor":
-            tree_lookup = "bpy.context.scene.compositing_node_group"
+            tree_lookup = _compositor_tree_expr()
         else:
             tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
 
@@ -888,7 +897,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         if tree_context == "shader":
             tree_lookup = f"bpy.data.materials.get({tree_name!r}).node_tree"
         elif tree_context == "compositor":
-            tree_lookup = "bpy.context.scene.compositing_node_group"
+            tree_lookup = _compositor_tree_expr()
         else:
             tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
 
@@ -946,7 +955,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         if tree_context == "shader":
             tree_lookup = f"bpy.data.materials.get({tree_name!r}).node_tree"
         elif tree_context == "compositor":
-            tree_lookup = "bpy.context.scene.compositing_node_group"
+            tree_lookup = _compositor_tree_expr()
         else:
             tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
 
@@ -992,7 +1001,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         if tree_context == "shader":
             tree_lookup = f"bpy.data.materials.get({tree_name!r}).node_tree"
         elif tree_context == "compositor":
-            tree_lookup = "bpy.context.scene.compositing_node_group"
+            tree_lookup = _compositor_tree_expr()
         else:
             tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
 
@@ -1027,7 +1036,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         if tree_context == "shader":
             tree_lookup = f"bpy.data.materials.get({tree_name!r}).node_tree"
         elif tree_context == "compositor":
-            tree_lookup = "bpy.context.scene.compositing_node_group"
+            tree_lookup = _compositor_tree_expr()
         else:
             tree_lookup = f"bpy.data.node_groups.get({tree_name!r})"
 
@@ -1324,7 +1333,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         """Wire a render pass to a File Output node in the compositor.
 
         Creates a File Output node and links the specified render pass
-        to it. Uses scene.compositing_node_group (Blender 5.x API).
+        to it. Compositor tree access is version-aware (5.x/4.x).
 
         Args:
             pass_name: Render pass output to connect (e.g. "Image", "Alpha",
@@ -1345,7 +1354,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             import bpy, json
             scene = bpy.context.scene
             scene.use_nodes = True
-            tree = scene.compositing_node_group
+            tree = {emit_compositor_tree(_ver(), "scene")}
             if tree is None:
                 print("ERROR: compositor node group not found — enable compositing first")
             else:

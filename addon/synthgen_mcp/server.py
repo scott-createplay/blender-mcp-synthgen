@@ -34,27 +34,26 @@ def _build_and_run(port: int, addon_dir: str) -> None:
 
         from .executor import AddonTransport, MainThreadExecutor
 
-        mcp = FastMCP(
-            "synthgen",
-            host="127.0.0.1",
-            port=port,
-            instructions=(
-                "Grounded Blender tools for procedural 3D synthetic data. "
-                "Schema-validated node/socket identifiers, scene-graph introspection, "
-                "and procedural authoring — never hallucinates Blender API names."
-            ),
-        )
-
         _transport = AddonTransport(_executor)
 
         from synthgen.schema.query import resolve_schema_dir
 
         version = _transport.get_blender_version()
         blender_dir = resolve_schema_dir(version)
+
+        from synthgen.mcp.tools.compat import build_server_instructions
+
+        mcp = FastMCP(
+            "synthgen",
+            host="127.0.0.1",
+            port=port,
+            instructions=build_server_instructions(version),
+        )
         logger.info("Blender %s → schema dir %s", version, blender_dir)
 
         get_transport = lambda: _transport
         get_blender_dir = lambda: blender_dir
+        get_blender_version = lambda: version
 
         from synthgen.mcp.tools import (
             blender as blender_tools,
@@ -66,9 +65,9 @@ def _build_and_run(port: int, addon_dir: str) -> None:
 
         schema_tools.register(mcp, get_blender_dir)
         graph_tools.register(mcp, get_transport)
-        blender_tools.register(mcp, get_transport, get_blender_dir)
-        verify_tools.register(mcp, get_transport)
-        pipeline_tools.register(mcp, get_transport, get_blender_dir)
+        blender_tools.register(mcp, get_transport, get_blender_dir, get_blender_version)
+        verify_tools.register(mcp, get_transport, get_blender_version)
+        pipeline_tools.register(mcp, get_transport, get_blender_dir, get_blender_version)
 
         global _tool_count, _tools_hash, _blender_version, _addon_version
         try:

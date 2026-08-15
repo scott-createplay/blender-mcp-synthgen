@@ -439,3 +439,48 @@ The `dir()` + `getattr()` approach returns nothing because `properties.inputs`
 members are not Python attributes — they are RNA properties accessed via
 bracket/subscription syntax. The tree interface provides the identifiers;
 bracket access on `properties.inputs` provides the values.
+
+---
+
+## Progress
+
+### Stage 0 — COMPLETE (2026-08-15)
+
+All sub-steps delivered and validated (296 tests, 0 failures).
+
+**0.1 — compat.py:** Created `src/synthgen/mcp/tools/compat.py` with 5 pure
+helper functions (`emit_read_input`, `emit_write_input`, `emit_iter_inputs`,
+`emit_compositor_tree`, `eevee_engine_id`) plus `build_server_instructions`.
+No bpy dependency, fully offline-testable.
+
+**0.2 — Version plumbing:** `get_blender_version` closure added to
+`server.py` and threaded through `register()` on `blender.py`, `verify.py`,
+and `pipeline.py`. Each module exposes `_ver()` for tool code-gen.
+
+**0.3 — Dynamic MCP instructions:** Server instructions now built at startup
+from the detected Blender version. Includes version string, API mode
+(5.x bracket access / 4.x id-property), compositor tree accessor, and
+EEVEE engine ID. Injected into agent context on every turn by MCP protocol.
+
+**0.4 — Migrated all inline version branches:**
+- `set_parameter` — replaced broken `getattr` + `.default_value` with
+  `emit_write_input()`. **Fixes feedback E (005 misfire).**
+- `sweep` — same replacement. **Fixes feedback E (005 misfire).**
+- `get_modifier_inputs` — replaced broken `dir()` + `getattr()` +
+  `.default_value` with `emit_iter_inputs()`. Now surfaces `attribute_name`.
+  **Fixes feedback D (005 misfire).**
+- All compositor tree lookups in `blender.py`, `verify.py`, `pipeline.py`
+  migrated to `emit_compositor_tree()`.
+- EEVEE engine ID docstring updated.
+
+**0.5 — Tests:** 27 new tests in `tests/test_version_routing.py` covering
+compat helpers, dynamic instructions, and version-parameterized tool code-gen
+(both 4.x and 5.x paths). All 269 existing tests updated and passing.
+
+**Key result:** Zero `bpy.app.version` references remain in MCP tool code.
+All version routing is host-side at code-gen time. Generated code is clean,
+branchless Python native to the target Blender version.
+
+**Side effect:** The 005 API misfires for `get_modifier_inputs`,
+`set_parameter`, and `sweep` are already fixed. Stages 2.2 and 4 only need
+verification and extension, not re-implementation of the core fix.

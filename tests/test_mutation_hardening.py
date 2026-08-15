@@ -143,7 +143,8 @@ def pipeline_tools():
 
 
 class TestSetParameter5x:
-    def test_generated_code_branches_on_blender_version(self, pipeline_tools):
+    def test_generated_code_has_no_version_branching(self, pipeline_tools):
+        """Version routing happens at code-gen time, not runtime."""
         fns, transport = pipeline_tools
         fns["set_parameter"](
             object_name="Cube",
@@ -152,9 +153,10 @@ class TestSetParameter5x:
             value=1.5,
         )
         code = transport.execute_python.call_args[0][0]
-        assert "bpy.app.version" in code
+        assert "bpy.app.version" not in code
 
-    def test_generated_code_uses_properties_inputs_for_5x(self, pipeline_tools):
+    def test_5x_uses_bracket_access_on_properties_inputs(self, pipeline_tools):
+        """Default version is 5.x — must use bracket access, not getattr."""
         fns, transport = pipeline_tools
         fns["set_parameter"](
             object_name="Cube",
@@ -163,20 +165,10 @@ class TestSetParameter5x:
             value=1.5,
         )
         code = transport.execute_python.call_args[0][0]
-        assert "mod.properties.inputs" in code
+        assert "mod.properties.inputs['Socket_2']['value'] = 1.5" in code
+        assert "getattr" not in code
 
-    def test_generated_code_keeps_4x_fallback(self, pipeline_tools):
-        fns, transport = pipeline_tools
-        fns["set_parameter"](
-            object_name="Cube",
-            modifier_name="GeometryNodes",
-            socket_identifier="Socket_2",
-            value=1.5,
-        )
-        code = transport.execute_python.call_args[0][0]
-        assert "mod[" in code
-
-    def test_generated_code_error_mentions_version_and_api_path(self, pipeline_tools):
+    def test_5x_error_on_missing_socket(self, pipeline_tools):
         fns, transport = pipeline_tools
         fns["set_parameter"](
             object_name="Cube",
@@ -186,7 +178,6 @@ class TestSetParameter5x:
         )
         code = transport.execute_python.call_args[0][0]
         assert "ERROR" in code
-        assert "ver[0]" in code and "ver[1]" in code
 
 
 # --- 1.4: expose_parameter — validate before mutate, coerce int -------------
@@ -392,11 +383,28 @@ class TestGetModifierInputs:
         fns, _ = verify_tools
         assert "get_modifier_inputs" in fns
 
-    def test_version_branching(self, verify_tools):
+    def test_no_version_branching_in_generated_code(self, verify_tools):
+        """Version routing happens at code-gen time, not runtime."""
         fns, transport = verify_tools
         fns["get_modifier_inputs"](object_name="Cube", modifier_name="GeometryNodes")
         code = transport.execute_python.call_args[0][0]
-        assert "bpy.app.version" in code
+        assert "bpy.app.version" not in code
+
+    def test_5x_uses_bracket_access(self, verify_tools):
+        """Default version is 5.x — must use bracket access on properties.inputs."""
+        fns, transport = verify_tools
+        fns["get_modifier_inputs"](object_name="Cube", modifier_name="GeometryNodes")
+        code = transport.execute_python.call_args[0][0]
+        assert "properties.inputs[" in code
+        assert "getattr" not in code
+        assert "dir(" not in code
+
+    def test_5x_surfaces_attribute_name(self, verify_tools):
+        """5.x code should read attribute_name from the property."""
+        fns, transport = verify_tools
+        fns["get_modifier_inputs"](object_name="Cube", modifier_name="GeometryNodes")
+        code = transport.execute_python.call_args[0][0]
+        assert "attribute_name" in code
 
     def test_is_read_only(self, verify_tools):
         fns, transport = verify_tools
@@ -702,8 +710,8 @@ class TestBuildGraph:
 # --- sweep() — Blender 5.x GN modifier input API -----------------------------
 
 class TestSweep5x:
-    def test_sweep_version_branching(self, pipeline_tools):
-        """sweep() generated code should branch on bpy.app.version for setting modifier inputs."""
+    def test_sweep_no_version_branching(self, pipeline_tools):
+        """sweep() generated code should NOT branch on bpy.app.version — routing is at code-gen time."""
         fns, transport = pipeline_tools
         fns["sweep"](
             object_name="obj",
@@ -712,8 +720,20 @@ class TestSweep5x:
             output_dir="/tmp/out",
         )
         code = transport.execute_python.call_args[0][0]
-        assert "bpy.app.version" in code
-        assert "mod.properties.inputs" in code
+        assert "bpy.app.version" not in code
+
+    def test_sweep_5x_uses_bracket_access(self, pipeline_tools):
+        """Default version is 5.x — sweep must use bracket access."""
+        fns, transport = pipeline_tools
+        fns["sweep"](
+            object_name="obj",
+            modifier_name="mod",
+            parameters=[{"socket": "Socket_1", "values": [1.0, 2.0]}],
+            output_dir="/tmp/out",
+        )
+        code = transport.execute_python.call_args[0][0]
+        assert "mod.properties.inputs[" in code
+        assert "getattr" not in code
 
 
 # --- save_checkpoint ----------------------------------------------------------

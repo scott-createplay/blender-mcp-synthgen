@@ -11,6 +11,8 @@ import os
 import textwrap
 from typing import TYPE_CHECKING
 
+from synthgen.mcp.tools.compat import emit_compositor_tree, emit_write_input
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -21,7 +23,7 @@ def _src_path() -> str:
     return os.path.normpath(os.path.join(here, "..", "..", ".."))
 
 
-def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
+def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_version=None) -> None:
     # Internal helpers (same pattern as blender.py)
     def _run(code: str, mutates: bool = False) -> str:
         transport = get_transport()
@@ -31,6 +33,11 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         if isinstance(result, dict):
             return result.get("output", json.dumps(result))
         return str(result)
+
+    def _ver() -> tuple[int, ...]:
+        if get_blender_version:
+            return get_blender_version()
+        return (5, 0, 0)
 
     def _resolve_dirty_code() -> str:
         """Build a snippet that resolves attribute bridges if the scene is dirty.
@@ -70,6 +77,8 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                               (e.g. "Socket_2", not the display name).
             value: Value to set — float, int, bool, or list for vectors.
         """
+        write_stmt = emit_write_input(_ver(), "mod", f"{socket_identifier!r}", f"{value!r}")
+
         code = textwrap.dedent(f"""\
             import bpy, json
             obj = bpy.data.objects.get({object_name!r})
@@ -80,30 +89,16 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
                 if not mod:
                     print(f"ERROR: modifier {modifier_name!r} not found on {{obj.name}}")
                 else:
-                    ver = bpy.app.version
-                    ok = False
-                    if ver >= (5, 0, 0):
-                        # Blender 5.x: GN modifier inputs live under mod.properties.inputs
-                        inp = getattr(mod.properties.inputs, {socket_identifier!r}, None)
-                        if inp is not None:
-                            inp.default_value = {value!r}
-                            ok = True
-                        else:
-                            print(f"ERROR: socket {socket_identifier!r} not found on mod.properties.inputs (Blender {{ver[0]}}.{{ver[1]}}, tried 5.x API)")
-                    else:
-                        # Blender 4.x: id-property API
-                        try:
-                            mod[{socket_identifier!r}] = {value!r}
-                            ok = True
-                        except Exception as _e:
-                            print(f"ERROR: failed to set socket {socket_identifier!r} via mod[...] (Blender {{ver[0]}}.{{ver[1]}}, tried 4.x API): {{_e}}")
-                    if ok:
+                    try:
+                        {write_stmt}
                         print(json.dumps({{
                             "object": obj.name,
                             "modifier": mod.name,
                             "socket": {socket_identifier!r},
                             "value": {value!r},
                         }}))
+                    except (KeyError, TypeError) as _e:
+                        print(f"ERROR: failed to set socket {socket_identifier!r}: {{_e}}")
         """)
         return _run(code, mutates=True)
 
@@ -232,16 +227,14 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
             bpy.ops.render.render(write_still=True)
         """) + sample_body
 
-        for_seed_block = textwrap.dedent("""\
+        sweep_write = emit_write_input(_ver(), "mod", "socket", "value")
+
+        for_seed_block = textwrap.dedent(f"""\
             for socket, value in zip(sockets, combo):
-                if bpy.app.version >= (5, 0, 0):
-                    inp = getattr(mod.properties.inputs, socket, None)
-                    if inp is not None:
-                        inp.default_value = value
-                    else:
-                        print(f"WARNING: socket {socket} not found on mod.properties.inputs")
-                else:
-                    mod[socket] = value
+                try:
+                    {sweep_write}
+                except (KeyError, TypeError) as _e:
+                    print(f"WARNING: failed to set socket {{socket}}: {{_e}}")
             for seed in seed_list:
         """) + textwrap.indent(loop_body, "    ")
 
@@ -297,7 +290,7 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None) -> None:
         code = textwrap.dedent(f"""\
             import bpy, json
             scene = bpy.context.scene
-            tree = scene.compositing_node_group
+            tree = {emit_compositor_tree(_ver(), "scene")}
             manifest = {{"file_outputs": [], "render_layers": []}}
             if tree is None:
                 print(json.dumps(manifest))

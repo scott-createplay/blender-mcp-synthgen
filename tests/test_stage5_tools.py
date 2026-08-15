@@ -282,7 +282,8 @@ class TestSetParameter:
         fns, _ = pipeline_tools
         assert "set_parameter" in fns
 
-    def test_sets_modifier_socket(self, pipeline_tools):
+    def test_sets_modifier_socket_5x(self, pipeline_tools):
+        """Default version is 5.x — uses bracket access on properties.inputs."""
         fns, transport = pipeline_tools
         fns["set_parameter"](
             object_name="Cube",
@@ -291,7 +292,7 @@ class TestSetParameter:
             value=0.5,
         )
         code = transport.execute_python.call_args[0][0]
-        assert "mod['Socket_2'] = 0.5" in code
+        assert "mod.properties.inputs['Socket_2']['value'] = 0.5" in code
 
     def test_validates_object(self, pipeline_tools):
         fns, transport = pipeline_tools
