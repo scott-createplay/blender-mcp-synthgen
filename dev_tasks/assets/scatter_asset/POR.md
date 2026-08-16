@@ -1,0 +1,420 @@
+# Scatter on Surface — Plan of Record (v0.2)
+
+## Summary
+
+Rebuild the scatter asset from scratch as an attribute-centric GN node group
+that follows the well-known attribute contract (`knowledge/well_known_attributes.md`).
+The scatter reads density from a named attribute, writes `pscale`, `orient`, `id`,
+`N`, `source_prim` on output points, and wires instancing through those attributes
+rather than direct sockets. Supports both density mode and exact count mode, with
+optional push-based relaxation and surface re-projection.
+
+## Reference
+
+- Houdini Scatter SOP: https://www.sidefx.com/docs/houdini/nodes/sop/scatter.html
+- Well-known attributes: `knowledge/well_known_attributes.md`
+- Current v0.1 asset: `assets/scatter.blend` (to be replaced)
+
+## Architecture
+
+### Attribute-centric design
+
+The scatter does NOT wire scale and rotation through direct socket connections
+to Instance on Points. Instead:
+
+1. **Scatter phase** — distribute points on the surface, compute per-point
+   values, store them as well-known named attributes on the output geometry.
+2. **Instance phase** — Instance on Points reads `pscale`, `orient`, etc.
+   from the named attributes on the points.
+
+This means if the user (or an upstream asset) has already written `pscale` or
+`orient` on the input geometry, those values flow through. The scatter's own
+computed values are defaults that can be overridden by upstream attributes.
+
+### Read attributes (input)
+
+| Attribute | String parameter | Default name | Fallback if missing |
+|-----------|-----------------|--------------|---------------------|
+| density weight | Density Attribute | `"density"` | 1.0 (uniform) |
+
+When the Density Attribute string is empty, no attribute lookup occurs —
+Density Max applies uniformly. When set, the Named Attribute node reads
+the float attribute and multiplies Density Max per element.
+
+### pscale passthrough rule
+
+**The scatter does NOT overwrite upstream pscale by default.** If the user
+defined `pscale` upstream, it flows through untouched. The scatter reads it
+for relaxation radii (influence bubble per point) but never modifies it.
+
+When no upstream `pscale` exists, the scatter initializes it to 1.0 — giving
+the relax uniform radii and the instancer uniform scale.
+
+Scale randomization is **opt-in** via `Randomize Scale` (bool, default false).
+Only when true does the scatter write random values (Scale Min → Scale Max)
+into `pscale`. When false, Scale Min / Scale Max are irrelevant.
+
+This follows the Houdini principle: scatter distributes points, it doesn't
+redefine their scale. Scale authorship is a separate upstream concern.
+
+### Write attributes (output)
+
+The scatter stores these on the scattered points BEFORE instancing:
+
+| Attribute | Type | Domain | Source |
+|-----------|------|--------|--------|
+| `pscale` | FLOAT | POINT | **Passthrough from upstream** (or 1.0 if missing). Only overwritten when Randomize Scale = true → random(Scale Min, Scale Max). |
+| `orient` | QUATERNION | POINT | Rotation from Distribute Points (aligns to surface normal) |
+| `N` | FLOAT_VECTOR | POINT | Surface normal at scatter point |
+| `id` | INT | POINT | Unique sequential ID per scattered point |
+| `source_prim` | INT | POINT | Face index the point was scattered on (future — if available from distribute) |
+
+Instance on Points then reads `pscale` (via Named Attribute → Combine XYZ
+for uniform scale) and `orient` (via Named Attribute) from the points.
+
+### Why this matters
+
+- An upstream modifier can store `pscale` on the mesh before scattering.
+  The scatter passes it through — upstream scale control just works. The
+  relax phase uses it for influence radii, and the instancer reads it for
+  instance size. No re-wiring, no surprises.
+- A downstream shader can read `Cd`, `pscale`, or `id` via the attribute
+  bridge without knowing they came from the scatter.
+- The agent can query `graph_attribute_trace` to see the full provenance
+  chain from density producer → scatter → shader.
+
+## Interface (v0.2)
+
+```
+Geometry           (NodeSocketGeometry)    — surface to scatter on
+
+— Distribution —
+Density Attribute  (NodeSocketString)      — name of float attribute modulating
+                                             density (empty = uniform)
+                                             [default "density"]
+Density Max        (NodeSocketFloat)       — ceiling on point density, points per
+                                             unit area [0.1–10000, default 10]
+Count              (NodeSocketInt)         — target point count (when Use Count = true)
+                                             [1–1000000, default 100]
+Use Count          (NodeSocketBool)        — true = count mode, false = density mode
+                                             [default false]
+
+— Relaxation —
+Relax Iterations   (NodeSocketInt)         — push/reproject passes; 0 = pure random
+                                             [0–20, default 0]
+Scale Radii By     (NodeSocketFloat)       — relaxation influence multiplier;
+                                             0 = disable, <1 = clumpy, >1 = aggressive
+                                             [0–2, default 1.0]
+
+— Scale —
+Scale Attribute    (NodeSocketString)      — attribute name for per-point uniform scale
+                                             [default "pscale"]
+Randomize Scale    (NodeSocketBool)        — true = overwrite scale attr with random
+                                             values; false = pass through upstream
+                                             [default false]
+Scale Min          (NodeSocketFloat)       — min random scale (only when Randomize Scale
+                                             = true) [0.01–10, default 0.8]
+Scale Max          (NodeSocketFloat)       — max random scale (only when Randomize Scale
+                                             = true) [0.01–10, default 1.2]
+
+— Instancing —
+Collection         (NodeSocketCollection)  — objects to instance on scattered points
+Seed               (NodeSocketInt)         — distribution randomness [default 0]
+```
+
+Output: Geometry (instances) with well-known attributes on the points.
+
+## Internal graph structure
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ PHASE 1: DISTRIBUTE                                                │
+│                                                                    │
+│  Group Input.Geometry                                              │
+│       │                                                            │
+│       ├──→ [if Use Count]:                                         │
+│       │      Face Area → Attribute Statistic (Sum) → total_area    │
+│       │      Math: count / total_area × 1.1 → computed_density     │
+│       │                                                            │
+│       ├──→ [density attribute lookup]:                              │
+│       │      Named Attribute (Density Attribute string)            │
+│       │        ├─ Exists? → Switch: attr value / 1.0               │
+│       │        └─ Value (float, 0–1)                               │
+│       │                                                            │
+│       ├──→ Switch (Use Count): computed_density OR Density Max      │
+│       │      × density_attr_value → effective density              │
+│       │                                                            │
+│       └──→ Distribute Points on Faces (RANDOM mode)                │
+│              ├─ Mesh: input geometry                               │
+│              ├─ Density: effective density                         │
+│              ├─ Seed: Seed parameter                               │
+│              ├─ outputs: Points, Rotation, Normal                  │
+│              └──→ [if Use Count]: Delete Geometry (Index >= Count)  │
+│                                                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│ PHASE 2: RELAX (when Relax Iterations > 0)                         │
+│                                                                    │
+│  Repeat Zone (iterations = Relax Iterations):                      │
+│    1. Push apart — Sample Nearest, compute repulsion vector,       │
+│       scale by (Scale Radii By × radius), nudge position           │
+│    2. Snap back — Sample Nearest Surface on input mesh,            │
+│       project points back to surface                               │
+│                                                                    │
+│  When Relax Iterations = 0, Repeat Zone is skipped (passthrough).  │
+│                                                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│ PHASE 3: STORE WELL-KNOWN ATTRIBUTES                               │
+│                                                                    │
+│  pscale resolution:                                                │
+│    Named Attribute (Scale Attribute) → Exists?                     │
+│    Switch: exists → upstream value, else → 1.0 = base pscale      │
+│    Switch (Randomize Scale): true → Random(Min,Max), false → base  │
+│    → Store Named Attribute (Scale Attribute string, FLOAT, POINT)  │
+│                                                                    │
+│  Store Named Attribute "orient":                                   │
+│    Rotation from Distribute Points → store on points               │
+│                                                                    │
+│  Store Named Attribute "N":                                        │
+│    Normal from Distribute Points → store on points                 │
+│                                                                    │
+│  Store Named Attribute "id":                                       │
+│    Index → store on points (unique per point)                      │
+│                                                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│ PHASE 4: INSTANCE                                                  │
+│                                                                    │
+│  Named Attribute (Scale Attribute string) → read pscale            │
+│    → Combine XYZ (uniform) → Instance on Points.Scale             │
+│                                                                    │
+│  Named Attribute "orient" → Instance on Points.Rotation            │
+│                                                                    │
+│  Collection Info (Separate Children, Reset Children)               │
+│    → Instance on Points.Instance                                   │
+│                                                                    │
+│  Random Value (INT, seed+2) → Instance on Points.Instance Index    │
+│  Pick Instance = true                                              │
+│                                                                    │
+│  Instance on Points → Group Output                                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Implementation stages
+
+### Prerequisites
+
+Before starting, read:
+- `knowledge/well_known_attributes.md` — the attribute contract
+- `knowledge/procedural_paradigm.md` — derive, don't set
+- `assets/scatter.md` — current manifest (will be rewritten)
+
+The current v0.1 node group in `assets/scatter.blend` should be deleted and
+rebuilt from scratch. The new graph is structurally different — patching v0.1
+would be harder than rebuilding.
+
+### Stage 1: Scaffold and distribute
+
+**Goal:** New node group with RANDOM distribute, Density Max, and density
+attribute lookup. No count mode, no relaxation, no instancing yet.
+
+1. Delete existing "Scatter on Surface" node group if present.
+2. Create new GeometryNodeTree "Scatter on Surface".
+3. Add interface parameters:
+   - INPUT: Geometry (NodeSocketGeometry)
+   - INPUT: Density Attribute (NodeSocketString, default "density")
+   - INPUT: Density Max (NodeSocketFloat, default 10, min 0.1, max 10000)
+   - INPUT: Seed (NodeSocketInt, default 0)
+   - OUTPUT: Geometry (NodeSocketGeometry)
+4. Add nodes: Group Input, Group Output, Distribute Points on Faces,
+   Named Attribute (FLOAT), Switch (FLOAT).
+5. Set Distribute Points to RANDOM mode.
+6. Wire density attribute lookup:
+   - Named Attribute reads Density Attribute string.
+   - Switch: if Exists → attr value, else → 1.0.
+   - Math: Density Max × attr_or_1 → Distribute.Density.
+7. Wire: Group Input.Geometry → Distribute.Mesh, Distribute.Seed from Seed param.
+8. Wire: Distribute.Points → Group Output.Geometry (temporary, for testing).
+9. Layout and test: create a test plane, apply modifier, verify points appear.
+10. Test with density attribute: store a float attr upstream, set string, verify
+    spatial masking works.
+
+**Verify:** Points scatter on surface. Density attribute modulates distribution.
+Empty string = uniform density.
+
+### Stage 2: Count mode
+
+**Goal:** Add exact count mode with oversample-and-trim.
+
+1. Add interface parameters:
+   - INPUT: Count (NodeSocketInt, default 100, min 1, max 1000000)
+   - INPUT: Use Count (NodeSocketBool, default false)
+2. Add nodes: Face Area, Attribute Statistic, Math (divide, multiply),
+   Switch (FLOAT), Delete Geometry, Compare (Index >= Count).
+3. Wire count path:
+   - Face Area → Attribute Statistic.Attribute (on input mesh geometry).
+   - Attribute Statistic.Sum = total surface area.
+   - Math: Count / total_area × 1.1 = oversample_density.
+4. Wire mode switch:
+   - Switch (Use Count): true → oversample_density, false → Density Max × attr.
+   - Result → Distribute.Density.
+5. Wire trim:
+   - After distribute: Index node, Compare (Index >= Count), Delete Geometry.
+   - Gate the delete on Use Count (only trim in count mode).
+6. Layout and test.
+
+**Verify:** Use Count = true, Count = 50 → exactly 50 points on any surface area.
+Use Count = false → density-based scatter unchanged from Stage 1.
+
+### Stage 3: Store well-known attributes
+
+**Goal:** Write orient, N, id on the scattered points. Initialize pscale to
+1.0 if missing upstream. Optionally randomize pscale (gated by bool).
+
+1. Add interface parameters:
+   - INPUT: Scale Attribute (NodeSocketString, default "pscale")
+   - INPUT: Randomize Scale (NodeSocketBool, default false)
+   - INPUT: Scale Min (NodeSocketFloat, default 0.8, min 0.01, max 10)
+   - INPUT: Scale Max (NodeSocketFloat, default 1.2, min 0.01, max 10)
+2. Add nodes: Named Attribute (reads Scale Attribute string — checks Exists),
+   Switch (FLOAT), Random Value (FLOAT), Store Named Attribute × 4,
+   Index node for id.
+3. Wire pscale initialization and passthrough:
+   - Named Attribute reads Scale Attribute string.
+   - Switch: if Exists → upstream value (passthrough), else → 1.0.
+   - This is the BASE pscale — used for relax radii and instancing.
+4. Wire optional scale randomization:
+   - Random Value (Scale Min → Scale Max, seed offset +1).
+   - Switch (Randomize Scale): true → random value, false → base pscale.
+   - Result → Store Named Attribute (Scale Attribute string, FLOAT, POINT).
+5. Wire remaining attribute stores (in series on the geometry stream):
+   - Store Named Attribute "orient" (QUATERNION, POINT):
+     value = Distribute.Rotation output.
+   - Store Named Attribute "N" (FLOAT_VECTOR, POINT):
+     value = Distribute.Normal output.
+   - Store Named Attribute "id" (INT, POINT):
+     value = Index.
+6. Layout and test: evaluate object, verify attributes exist on output points.
+
+**Verify:**
+- No upstream pscale, Randomize Scale = false → pscale = 1.0 on all points.
+- Upstream pscale = 0.5, Randomize Scale = false → pscale = 0.5 (passthrough).
+- Randomize Scale = true → pscale varies between Scale Min and Scale Max.
+- orient, N, id always present.
+
+### Stage 4: Instance from attributes
+
+**Goal:** Instance on Points reads scale and rotation from the stored attributes.
+
+1. Add interface parameters:
+   - INPUT: Collection (NodeSocketCollection)
+2. Add nodes: Named Attribute (FLOAT, reads Scale Attribute string),
+   Combine XYZ (uniform scale), Named Attribute (QUATERNION, reads "orient"),
+   Collection Info, Random Value (INT) for instance index,
+   Instance on Points.
+3. Wire instancing:
+   - Named Attribute (Scale Attribute) → Combine XYZ (X=Y=Z) → Instance.Scale.
+   - Named Attribute "orient" → Instance.Rotation.
+   - Collection Info (Separate Children, Reset Children) → Instance.Instance.
+   - Random Value (INT, seed offset +2) → Instance.Instance Index.
+   - Pick Instance = true.
+   - Points (from attribute store chain) → Instance.Points.
+4. Instance.Instances → Group Output.Geometry.
+5. Layout and test.
+
+**Verify:** Instances appear on surface with varied scale and normal alignment.
+Changing Scale Min/Max changes instance sizes. Collection objects are randomly
+picked. Attributes (pscale, orient, N, id) survive on the instanced points.
+
+### Stage 5: Relaxation
+
+**Goal:** Push-based relaxation with surface re-projection in a Repeat Zone.
+
+1. Add interface parameters:
+   - INPUT: Relax Iterations (NodeSocketInt, default 0, min 0, max 20)
+   - INPUT: Scale Radii By (NodeSocketFloat, default 1.0, min 0, max 2)
+2. Insert a Repeat Zone between the distribute/trim step and the attribute
+   store step. The zone processes the point cloud geometry.
+3. Inside the Repeat Zone (each iteration):
+   a. Sample Nearest — for each point, find nearest neighbor index.
+   b. Sample Index — read the neighbor's position.
+   c. Math — compute repulsion vector: normalize(my_pos - neighbor_pos).
+   d. Math — compute push distance: pscale × Scale Radii By. The point's
+      pscale (from upstream or initialized to 1.0) defines its influence
+      radius. This is a READ of pscale, not a write.
+   e. Set Position — nudge point along repulsion vector.
+   f. Sample Nearest Surface — snap point back onto the input mesh.
+      The INPUT MESH must be passed into the Repeat Zone as a second
+      geometry socket so it's available for re-projection.
+4. When Relax Iterations = 0, the Repeat Zone executes zero times (passthrough).
+5. Layout and test.
+
+**Prototype first:** Before building the full relaxation subgraph, prototype
+the Blur Attribute + Sample Nearest Surface approach manually in Blender.
+If Blur Attribute on position with low weight produces acceptable uniformity
+after snap-back, use it instead of the manual repulsion logic — it's one node
+vs. a 6-node subgraph inside the repeat zone.
+
+**Verify:** Relax Iterations = 0 matches Stage 4 output. Relax Iterations = 5
+produces visually more uniform distribution. Points remain on the mesh surface
+(no drift). Performance is acceptable at 10k points with 5 iterations.
+
+### Stage 6: Final interface, save, and manifest
+
+1. Reorder interface parameters to match the v0.2 spec above.
+2. Auto-layout the complete graph.
+3. Save to `assets/scatter.blend` (overwrite v0.1).
+4. Rewrite `assets/scatter.md` manifest:
+   - Update parameter table with final identifiers.
+   - Document read/write attributes.
+   - Document composition patterns with density producers.
+   - Document the override pattern (string parameters for attribute names).
+   - Update limitations and sweep guidance.
+5. Checkpoint.
+
+**Verify:** Fresh Blender → load node group from scatter.blend → apply to mesh
+→ set collection → verify instances appear → sweep seeds → verify coherent
+output across parameter space.
+
+## GN nodes required
+
+Reference for the implementing agent — all node type IDs grounded against
+the Blender 5.2 schema:
+
+| Purpose | Node type ID |
+|---------|-------------|
+| Distribute points | `GeometryNodeDistributePointsOnFaces` |
+| Delete geometry | `GeometryNodeDeleteGeometry` |
+| Instance on points | `GeometryNodeInstanceOnPoints` |
+| Collection info | `GeometryNodeCollectionInfo` |
+| Store named attribute | `GeometryNodeStoreNamedAttribute` |
+| Read named attribute | `GeometryNodeInputNamedAttribute` |
+| Face area | `GeometryNodeInputMeshFaceArea` |
+| Attribute statistic | `GeometryNodeAttributeStatistic` |
+| Sample nearest | `GeometryNodeSampleNearest` |
+| Sample nearest surface | `GeometryNodeSampleNearestSurface` |
+| Blur attribute | `GeometryNodeBlurAttribute` |
+| Repeat zone input | `GeometryNodeRepeatInput` |
+| Repeat zone output | `GeometryNodeRepeatOutput` |
+| Random value | `FunctionNodeRandomValue` |
+| Combine XYZ | `ShaderNodeCombineXYZ` |
+| Math | `ShaderNodeMath` |
+| Compare | `FunctionNodeCompare` |
+| Switch | `GeometryNodeSwitch` |
+| Index | `GeometryNodeInputIndex` |
+| Group input | `NodeGroupInput` |
+| Group output | `NodeGroupOutput` |
+
+Socket identifiers: always use `schema_show` to confirm before wiring.
+Socket label ≠ identifier.
+
+## Open questions
+
+- [ ] Blur Attribute vs explicit repulsion for relaxation — prototype needed.
+- [ ] `source_prim` and `source_uv`: does Distribute Points on Faces expose
+      these in Blender 5.2, or do we need to compute them separately?
+- [ ] Should the instance index randomization also be controllable via a
+      well-known attribute (e.g., `instance_id`)?
+- [ ] Max Relax Radius: include in v0.2 or defer? Prevents blowup in
+      low-density areas but adds another parameter.
+- [ ] Mode switch: `Use Count` bool vs enum property. Bool is simpler for
+      agents and works with set_parameter. Enum is cleaner in the Blender UI.
+      Decision: start with bool, revisit if UX is poor.
