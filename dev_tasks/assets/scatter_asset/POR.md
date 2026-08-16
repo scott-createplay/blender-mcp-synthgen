@@ -281,44 +281,45 @@ Use Count = false → density-based scatter unchanged from Stage 1.
 - Randomize Scale = true → pscale varies between Scale Min and Scale Max.
 - orient, N, id always present.
 
-### Stage 4: Relaxation (deferred to v0.3)
+### Stage 4: Relaxation ✅
 
 **Goal:** Push-based relaxation with surface re-projection in a Repeat Zone.
 
-1. Add interface parameters:
-   - INPUT: Relax Iterations (NodeSocketInt, default 0, min 0, max 20)
-   - INPUT: Scale Radii By (NodeSocketFloat, default 1.0, min 0, max 2)
-2. Insert a Repeat Zone between the distribute/trim step and the attribute
-   store step. The zone processes the point cloud geometry.
-3. Inside the Repeat Zone (each iteration):
-   a. Sample Nearest — for each point, find nearest neighbor index.
-   b. Sample Index — read the neighbor's position.
-   c. Math — compute repulsion vector: normalize(my_pos - neighbor_pos).
-   d. Math — compute push distance: pscale × Scale Radii By. The point's
-      pscale (from upstream or initialized to 1.0) defines its influence
-      radius. This is a READ of pscale, not a write.
-   e. Set Position — nudge point along repulsion vector.
-   f. Sample Nearest Surface — snap point back onto the input mesh.
-      The INPUT MESH must be passed into the Repeat Zone as a second
-      geometry socket so it's available for re-projection.
-4. When Relax Iterations = 0, the Repeat Zone executes zero times (passthrough).
-5. Layout and test.
+**Implementation:** Uses `GeometryNodeIndexOfNearest` (self-excluded nearest
+neighbor — the key discovery) + `Sample Index` + vector math + `Set Position`
++ `Sample Nearest Surface` snap-back, all inside a Repeat Zone with 2 geometry
+items (points + input mesh for snap-back).
 
-**Prototype first:** Before building the full relaxation subgraph, prototype
-the Blur Attribute + Sample Nearest Surface approach manually in Blender.
-If Blur Attribute on position with low weight produces acceptable uniformity
-after snap-back, use it instead of the manual repulsion logic — it's one node
-vs. a 6-node subgraph inside the repeat zone.
+Nodes added (13 total):
+- Relax Repeat In / Out (2 geometry items: points + mesh)
+- Nearest Index (`GeometryNodeIndexOfNearest`)
+- Point Position (`GeometryNodeInputPosition`)
+- Read Neighbor Pos (`GeometryNodeSampleIndex`, FLOAT_VECTOR)
+- Push Direction (`ShaderNodeVectorMath`, SUBTRACT)
+- Normalize Push (`ShaderNodeVectorMath`, NORMALIZE)
+- Push Amount (`ShaderNodeMath`, MULTIPLY, Scale Radii By × 0.02)
+- Scale Push (`ShaderNodeVectorMath`, SCALE)
+- Nudge (`GeometryNodeSetPosition`, Offset mode)
+- Snap to Surface (`GeometryNodeSampleNearestSurface`, FLOAT_VECTOR)
+- Surface Position (`GeometryNodeInputPosition`)
+- Apply Snap (`GeometryNodeSetPosition`, Position mode)
 
-**GN limitation discovered:** Geometry Proximity on a self-cloud returns
-distance=0 (each point finds itself as nearest neighbor). There is no native
-self-exclusion for point cloud proximity queries in GN. Candidate approaches
-for v0.3: even/odd index split for approximate nearest neighbor, or
-numpy-based relaxation via `execute_python`.
+**Validated results (50 points, count mode, flat plane):**
 
-**Verify:** Relax Iterations = 0 matches Stage 3 output. Relax Iterations = 5
-produces visually more uniform distribution. Points remain on the mesh surface
-(no drift). Performance is acceptable at 10k points with 5 iterations.
+| Iterations | min NN | max NN | avg NN | uniformity | CV |
+|-----------|--------|--------|--------|-----------|-----|
+| 0 | 0.018 | 0.360 | 0.155 | 0.049 | 0.513 |
+| 5 | 0.130 | 0.399 | 0.226 | 0.327 | 0.291 |
+| 10 | 0.181 | 0.467 | 0.258 | 0.386 | 0.208 |
+| 20 | 0.216 | 0.450 | 0.280 | 0.480 | 0.150 |
+
+- 10x uniformity improvement at 20 iterations
+- Z stays exactly 0.000 — snap-back holds
+- Convergent and stable, no blowup
+
+**Key discovery:** `GeometryNodeIndexOfNearest` naturally excludes self when
+finding nearest neighbors. `Sample Nearest` and `Geometry Proximity` do NOT.
+This unblocks pure-GN relaxation without even/odd hacks or Python.
 
 ### Stage 5: Final interface, save, and manifest
 
@@ -372,8 +373,9 @@ Socket label ≠ identifier.
 - [x] Mode switch: `Use Count` bool vs enum property — **bool**, simpler for
       agents and works with set_parameter.
 - [x] Instancing: removed from scatter scope — **separate asset**.
-- [x] GN self-proximity: Geometry Proximity on self-cloud returns distance=0 —
-      **relaxation deferred to v0.3**, interface params added as placeholders.
+- [x] GN self-proximity: `Geometry Proximity` and `Sample Nearest` return
+      distance=0 on self-cloud. **Solved** with `Index of Nearest` which
+      naturally excludes self. Relaxation fully wired in pure GN.
 
 ## Open questions
 

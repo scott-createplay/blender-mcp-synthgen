@@ -73,8 +73,9 @@ with index >= target count.
 | Scale Min | Socket_9 | Float | 0.8 | 0.01–10 | Min random scale (Randomize Scale only) |
 | Scale Max | Socket_10 | Float | 1.2 | 0.01–10 | Max random scale (Randomize Scale only) |
 | Randomize Scale | Socket_11 | Bool | false | — | true = overwrite scale attr with random |
-| Relax Iterations | Socket_13 | Int | 0 | 0–20 | Reserved (not wired in v0.2) |
-| Scale Radii By | Socket_14 | Float | 1.0 | 0–2 | Reserved (not wired in v0.2) |
+| Relax Iterations | Socket_13 | Int | 0 | 0–10000 | Push-apart + snap-back passes; 0 = pure random |
+| Scale Radii By | Socket_14 | Float | 1.0 | 0–2 | Multiplier on density-derived push radius |
+| Max Relax Radius | Socket_16 | Float | 1.0 | 0.001–100 | Clamps push radius in near-zero density areas |
 
 ## Internal structure
 
@@ -95,7 +96,19 @@ Group Input
   │  Distribute.Points ──→ [if Use Count]: Delete (Index >= Count)
   │                    ──→ Trim Gate (Use Count selects raw vs trimmed)
   │
-  │  Trim Gate ──→ Store pscale (passthrough or random)
+  │  Trim Gate ──→ Repeat Zone (Relax Iterations passes):
+  │                  ┌ Density-aware radius:
+  │                  │  Named Attribute (density) → Switch (exists? : 1.0)
+  │                  │  → Sample Nearest Surface (from input mesh)
+  │                  │  → max(ε) → √ → 1/√ → min(Max Relax Radius)
+  │                  │  → × Scale Radii By → × 0.05 damping → push_amount
+  │                  ├ Nearest neighbor:
+  │                  │  Index of Nearest (self-excluded) → Sample Index
+  │                  │  → my_pos - neighbor_pos → normalize → × push_amount
+  │                  ├ Set Position (Offset) → nudge apart
+  │                  ├ Sample Nearest Surface → snap back to input mesh
+  │                  └ Set Position → apply snapped position
+  │               ──→ Store pscale (passthrough or random)
   │            ──→ Store orient (from Distribute.Rotation)
   │            ──→ Store N (from Distribute.Normal)
   │            ──→ Store id (from Index)
@@ -119,9 +132,12 @@ Group Input
 
 ## Limitations
 
-- No relaxation in v0.2. Relax Iterations and Scale Radii By are interface-ready
-  but not wired. GN lacks native self-neighbor exclusion for point clouds.
-  Candidate approaches for v0.3: even/odd index split, numpy-based relaxation.
+- Relaxation uses density-aware radii (1/√density, clamped by Max Relax Radius)
+  with `Index of Nearest` (self-excluded) for neighbor finding, push + `Sample
+  Nearest Surface` snap-back inside a Repeat Zone. Pure GN, no Python. At 20
+  iterations on 50 points, uniformity reaches ~0.60 (vs 0.05 unrelaxed).
+  Density-proportional radii preserve density gradients during relaxation —
+  dense areas push less, sparse areas push more (per Houdini Scatter SOP model).
 - No instancing — outputs raw point cloud. Wire Instance on Points downstream.
 - Normal alignment only (Z-up oriented to face normal). No custom axis control.
 - RANDOM distribution only. No Poisson mode.
@@ -132,4 +148,5 @@ For synthetic data variation, sweep:
 - **Seed** — different point arrangements per image
 - **Density Max** or **Count** — sparse to dense coverage
 - **Randomize Scale + Scale Min/Max** — size variation (opt-in)
+- **Relax Iterations** — 0 (random) to 10–20 (blue noise)
 - **Density Attribute** (via upstream) — spatial distribution patterns
