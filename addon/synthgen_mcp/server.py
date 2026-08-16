@@ -23,7 +23,7 @@ _blender_version: str | None = None
 _addon_version: str | None = None
 
 
-def _build_and_run(port: int, addon_dir: str, viewpoint: str = "") -> None:
+def _build_and_run(port: int, addon_dir: str, viewpoint: str = "", knowledge_dir: str = "") -> None:
     """Build the FastMCP instance, register tools, and run SSE server.
 
     This runs in a daemon thread. Blocks until the server shuts down.
@@ -69,6 +69,22 @@ def _build_and_run(port: int, addon_dir: str, viewpoint: str = "") -> None:
         verify_tools.register(mcp, get_transport, get_blender_version)
         pipeline_tools.register(mcp, get_transport, get_blender_dir, get_blender_version)
 
+        # Register knowledge/*.md files as MCP resources
+        from pathlib import Path
+        kd = Path(knowledge_dir) if knowledge_dir else Path(addon_dir) / "knowledge"
+        if kd.is_dir():
+            from mcp.server.fastmcp.resources import FileResource
+            for md_file in sorted(kd.glob("*.md")):
+                mcp.add_resource(FileResource(
+                    uri=f"knowledge://{md_file.stem}",
+                    path=md_file.resolve(),
+                    name=md_file.stem.replace("_", " "),
+                    description=f"Knowledge file: {md_file.stem.replace('_', ' ')}",
+                    mime_type="text/markdown",
+                ))
+            logger.info("Registered %d knowledge resources from %s",
+                        len(list(kd.glob("*.md"))), kd)
+
         global _tool_count, _tools_hash, _blender_version, _addon_version
         try:
             tools = mcp._tool_manager._tools
@@ -105,7 +121,7 @@ def _build_and_run(port: int, addon_dir: str, viewpoint: str = "") -> None:
         logger.exception("MCP server thread crashed")
 
 
-def start(port: int, addon_dir: str, viewpoint: str = "") -> None:
+def start(port: int, addon_dir: str, viewpoint: str = "", knowledge_dir: str = "") -> None:
     """Start the SSE MCP server in a background daemon thread."""
     global _executor, _server_thread, _port, _shutdown_event
 
@@ -127,7 +143,7 @@ def start(port: int, addon_dir: str, viewpoint: str = "") -> None:
 
     _server_thread = threading.Thread(
         target=_build_and_run,
-        args=(port, addon_dir, viewpoint),
+        args=(port, addon_dir, viewpoint, knowledge_dir),
         daemon=True,
         name="synthgen-mcp-sse",
     )

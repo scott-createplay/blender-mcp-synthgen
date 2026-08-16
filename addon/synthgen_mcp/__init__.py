@@ -156,6 +156,16 @@ class SynthgenMCPPreferences(bpy.types.AddonPreferences):
         default=_DEFAULT_VIEWPOINT,
         maxlen=0,
     )
+    knowledge_dir: bpy.props.StringProperty(
+        name="Knowledge Directory",
+        description=(
+            "Directory of .md files served as MCP resources. "
+            "Leave empty to use the bundled knowledge/ directory. "
+            "Changes take effect after server restart."
+        ),
+        subtype="DIR_PATH",
+        default="",
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -171,6 +181,17 @@ class SynthgenMCPPreferences(bpy.types.AddonPreferences):
         row.operator("synthgen.open_viewpoint_editor", icon="WINDOW")
         row.operator("synthgen.apply_viewpoint", icon="FILE_REFRESH")
         row.operator("synthgen.reset_viewpoint", icon="LOOP_BACK")
+
+        layout.separator()
+        layout.label(text="Knowledge Resources:")
+        box = layout.box()
+        box.prop(self, "knowledge_dir", text="")
+        resolved = self.knowledge_dir or os.path.join(_addon_dir, "knowledge")
+        if os.path.isdir(resolved):
+            count = len([f for f in os.listdir(resolved) if f.endswith(".md")])
+            box.label(text=f"Using: {resolved} ({count} .md files)", icon="FILE_FOLDER")
+        else:
+            box.label(text=f"Directory not found: {resolved}", icon="ERROR")
 
 
 class SYNTHGEN_OT_open_viewpoint_editor(bpy.types.Operator):
@@ -231,7 +252,8 @@ class SYNTHGEN_OT_apply_viewpoint(bpy.types.Operator):
         srv.stop()
         if was_running:
             try:
-                srv.start(prefs.preferences.port, _addon_dir, viewpoint=content)
+                kd = prefs.preferences.knowledge_dir or os.path.join(_addon_dir, "knowledge")
+                srv.start(prefs.preferences.port, _addon_dir, viewpoint=content, knowledge_dir=kd)
                 start_watchdog()
             except Exception as exc:
                 self.report({"ERROR"}, f"Failed to restart server: {exc}")
@@ -292,8 +314,11 @@ def _deferred_start():
     prefs = bpy.context.preferences.addons.get(__package__)
     port = prefs.preferences.port if prefs else 8400
     viewpoint = prefs.preferences.viewpoint if prefs else ""
+    knowledge_dir = prefs.preferences.knowledge_dir if prefs else ""
+    if not knowledge_dir:
+        knowledge_dir = os.path.join(_addon_dir, "knowledge")
     try:
-        srv.start(port, _addon_dir, viewpoint=viewpoint)
+        srv.start(port, _addon_dir, viewpoint=viewpoint, knowledge_dir=knowledge_dir)
         start_watchdog()
     except Exception:
         logger.exception("Failed to start MCP server")

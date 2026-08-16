@@ -97,6 +97,7 @@ def main():
     addon_src = os.path.join(repo_root, "addon", "synthgen_mcp")
     synthgen_src = os.path.join(repo_root, "src", "synthgen")
     schemas_src = os.path.join(repo_root, "data", "schemas")
+    knowledge_src = os.path.join(repo_root, "knowledge")
 
     for label, path in [("addon", addon_src), ("synthgen", synthgen_src), ("schemas", schemas_src)]:
         if not os.path.isdir(path):
@@ -113,6 +114,7 @@ def main():
     print(f"  addon source:    {addon_src}")
     print(f"  synthgen source: {synthgen_src}")
     print(f"  schemas source:  {schemas_src}")
+    print(f"  knowledge source:{' ' if knowledge_src else ''}{knowledge_src}")
     print(f"  target:          {dest}")
     print()
 
@@ -128,22 +130,30 @@ def main():
 
     # 1. Copy addon source
     shutil.copytree(addon_src, dest, ignore=_IGNORE)
-    print("  [1/3] Copied addon source")
+    print("  [1/4] Copied addon source")
 
     # 2. Bundle synthgen package
     shutil.copytree(synthgen_src, os.path.join(dest, "synthgen"), ignore=_IGNORE)
-    print("  [2/3] Bundled synthgen package")
+    print("  [2/4] Bundled synthgen package")
 
     # 3. Bundle schemas
     shutil.copytree(schemas_src, os.path.join(dest, "data", "schemas"), ignore=_IGNORE)
-    print("  [3/3] Bundled schema data")
+    print("  [3/4] Bundled schema data")
+
+    # 4. Bundle knowledge files (user-customizable MCP resources)
+    if os.path.isdir(knowledge_src):
+        shutil.copytree(knowledge_src, os.path.join(dest, "knowledge"), ignore=_IGNORE)
+        md_count = len([f for f in os.listdir(knowledge_src) if f.endswith(".md")])
+        print(f"  [4/4] Bundled knowledge files ({md_count} .md files)")
+    else:
+        print("  [4/4] No knowledge/ directory found — skipped")
 
     # 4. Restore or install vendor/ (pip deps: mcp SDK, starlette, uvicorn, etc.)
     if vendor_backup and os.path.isdir(vendor_backup):
         shutil.move(vendor_backup, vendor_dest)
-        print("  [4/4] Restored vendor/ (pip deps preserved)")
+        print("  [5/5] Restored vendor/ (pip deps preserved)")
     else:
-        print("  [4/4] Installing pip deps into vendor/ ...")
+        print("  [5/5] Installing pip deps into vendor/ ...")
         os.makedirs(vendor_dest, exist_ok=True)
         try:
             subprocess.check_call(
@@ -170,7 +180,7 @@ def main():
         blender_exe = shutil.which("blender")
 
     if blender_exe:
-        print("\n  [5/5] Enabling addon in Blender preferences ...")
+        print("\n  [6/6] Enabling addon in Blender preferences ...")
         enable_script = os.path.join(os.path.dirname(__file__), "_enable_addon.py")
         with open(enable_script, "w") as f:
             f.write(
