@@ -5,9 +5,9 @@
 Rebuild the scatter asset from scratch as an attribute-centric GN node group
 that follows the well-known attribute contract (`knowledge/well_known_attributes.md`).
 The scatter reads density from a named attribute, writes `pscale`, `orient`, `id`,
-`N`, `source_prim` on output points, and wires instancing through those attributes
-rather than direct sockets. Supports both density mode and exact count mode, with
-optional push-based relaxation and surface re-projection.
+`N` on output points. Outputs a **point cloud** — instancing is a separate
+downstream asset. Supports both density mode and exact count mode, with
+interface-ready relaxation parameters (not yet wired in v0.2).
 
 ## Reference
 
@@ -19,17 +19,14 @@ optional push-based relaxation and surface re-projection.
 
 ### Attribute-centric design
 
-The scatter does NOT wire scale and rotation through direct socket connections
-to Instance on Points. Instead:
+The scatter outputs a **point cloud with well-known attributes**. Instancing
+is a separate downstream concern (a dedicated Instance asset or user-wired
+Instance on Points node). The scatter's job ends at producing points with
+the right attributes.
 
-1. **Scatter phase** — distribute points on the surface, compute per-point
-   values, store them as well-known named attributes on the output geometry.
-2. **Instance phase** — Instance on Points reads `pscale`, `orient`, etc.
-   from the named attributes on the points.
-
-This means if the user (or an upstream asset) has already written `pscale` or
-`orient` on the input geometry, those values flow through. The scatter's own
-computed values are defaults that can be overridden by upstream attributes.
+If the user (or an upstream asset) has already written `pscale` or `orient`
+on the input geometry, those values flow through. The scatter's own computed
+values are defaults that can be overridden by upstream attributes.
 
 ### Read attributes (input)
 
@@ -67,10 +64,9 @@ The scatter stores these on the scattered points BEFORE instancing:
 | `orient` | QUATERNION | POINT | Rotation from Distribute Points (aligns to surface normal) |
 | `N` | FLOAT_VECTOR | POINT | Surface normal at scatter point |
 | `id` | INT | POINT | Unique sequential ID per scattered point |
-| `source_prim` | INT | POINT | Face index the point was scattered on (future — if available from distribute) |
 
-Instance on Points then reads `pscale` (via Named Attribute → Combine XYZ
-for uniform scale) and `orient` (via Named Attribute) from the points.
+Downstream Instance on Points reads `pscale` (via Named Attribute → Combine XYZ
+for uniform scale) and `orient` (via Named Attribute) from the output points.
 
 ### Why this matters
 
@@ -117,12 +113,11 @@ Scale Min          (NodeSocketFloat)       — min random scale (only when Rando
 Scale Max          (NodeSocketFloat)       — max random scale (only when Randomize Scale
                                              = true) [0.01–10, default 1.2]
 
-— Instancing —
-Collection         (NodeSocketCollection)  — objects to instance on scattered points
+— General —
 Seed               (NodeSocketInt)         — distribution randomness [default 0]
 ```
 
-Output: Geometry (instances) with well-known attributes on the points.
+Output: Point cloud geometry with well-known attributes on the points.
 
 ## Internal graph structure
 
@@ -180,21 +175,7 @@ Output: Geometry (instances) with well-known attributes on the points.
 │  Store Named Attribute "id":                                       │
 │    Index → store on points (unique per point)                      │
 │                                                                    │
-├─────────────────────────────────────────────────────────────────────┤
-│ PHASE 4: INSTANCE                                                  │
-│                                                                    │
-│  Named Attribute (Scale Attribute string) → read pscale            │
-│    → Combine XYZ (uniform) → Instance on Points.Scale             │
-│                                                                    │
-│  Named Attribute "orient" → Instance on Points.Rotation            │
-│                                                                    │
-│  Collection Info (Separate Children, Reset Children)               │
-│    → Instance on Points.Instance                                   │
-│                                                                    │
-│  Random Value (INT, seed+2) → Instance on Points.Instance Index    │
-│  Pick Instance = true                                              │
-│                                                                    │
-│  Instance on Points → Group Output                                 │
+│  Last Store Named Attribute → Group Output                         │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -300,31 +281,7 @@ Use Count = false → density-based scatter unchanged from Stage 1.
 - Randomize Scale = true → pscale varies between Scale Min and Scale Max.
 - orient, N, id always present.
 
-### Stage 4: Instance from attributes
-
-**Goal:** Instance on Points reads scale and rotation from the stored attributes.
-
-1. Add interface parameters:
-   - INPUT: Collection (NodeSocketCollection)
-2. Add nodes: Named Attribute (FLOAT, reads Scale Attribute string),
-   Combine XYZ (uniform scale), Named Attribute (QUATERNION, reads "orient"),
-   Collection Info, Random Value (INT) for instance index,
-   Instance on Points.
-3. Wire instancing:
-   - Named Attribute (Scale Attribute) → Combine XYZ (X=Y=Z) → Instance.Scale.
-   - Named Attribute "orient" → Instance.Rotation.
-   - Collection Info (Separate Children, Reset Children) → Instance.Instance.
-   - Random Value (INT, seed offset +2) → Instance.Instance Index.
-   - Pick Instance = true.
-   - Points (from attribute store chain) → Instance.Points.
-4. Instance.Instances → Group Output.Geometry.
-5. Layout and test.
-
-**Verify:** Instances appear on surface with varied scale and normal alignment.
-Changing Scale Min/Max changes instance sizes. Collection objects are randomly
-picked. Attributes (pscale, orient, N, id) survive on the instanced points.
-
-### Stage 5: Relaxation
+### Stage 4: Relaxation (deferred to v0.3)
 
 **Goal:** Push-based relaxation with surface re-projection in a Repeat Zone.
 
@@ -353,11 +310,17 @@ If Blur Attribute on position with low weight produces acceptable uniformity
 after snap-back, use it instead of the manual repulsion logic — it's one node
 vs. a 6-node subgraph inside the repeat zone.
 
-**Verify:** Relax Iterations = 0 matches Stage 4 output. Relax Iterations = 5
+**GN limitation discovered:** Geometry Proximity on a self-cloud returns
+distance=0 (each point finds itself as nearest neighbor). There is no native
+self-exclusion for point cloud proximity queries in GN. Candidate approaches
+for v0.3: even/odd index split for approximate nearest neighbor, or
+numpy-based relaxation via `execute_python`.
+
+**Verify:** Relax Iterations = 0 matches Stage 3 output. Relax Iterations = 5
 produces visually more uniform distribution. Points remain on the mesh surface
 (no drift). Performance is acceptable at 10k points with 5 iterations.
 
-### Stage 6: Final interface, save, and manifest
+### Stage 5: Final interface, save, and manifest
 
 1. Reorder interface parameters to match the v0.2 spec above.
 2. Auto-layout the complete graph.
@@ -383,8 +346,6 @@ the Blender 5.2 schema:
 |---------|-------------|
 | Distribute points | `GeometryNodeDistributePointsOnFaces` |
 | Delete geometry | `GeometryNodeDeleteGeometry` |
-| Instance on points | `GeometryNodeInstanceOnPoints` |
-| Collection info | `GeometryNodeCollectionInfo` |
 | Store named attribute | `GeometryNodeStoreNamedAttribute` |
 | Read named attribute | `GeometryNodeInputNamedAttribute` |
 | Face area | `GeometryNodeInputMeshFaceArea` |
@@ -406,15 +367,19 @@ the Blender 5.2 schema:
 Socket identifiers: always use `schema_show` to confirm before wiring.
 Socket label ≠ identifier.
 
+## Resolved
+
+- [x] Mode switch: `Use Count` bool vs enum property — **bool**, simpler for
+      agents and works with set_parameter.
+- [x] Instancing: removed from scatter scope — **separate asset**.
+- [x] GN self-proximity: Geometry Proximity on self-cloud returns distance=0 —
+      **relaxation deferred to v0.3**, interface params added as placeholders.
+
 ## Open questions
 
 - [ ] Blur Attribute vs explicit repulsion for relaxation — prototype needed.
+      Even/odd index split is a candidate for approximate nearest neighbor in GN.
 - [ ] `source_prim` and `source_uv`: does Distribute Points on Faces expose
       these in Blender 5.2, or do we need to compute them separately?
-- [ ] Should the instance index randomization also be controllable via a
-      well-known attribute (e.g., `instance_id`)?
-- [ ] Max Relax Radius: include in v0.2 or defer? Prevents blowup in
+- [ ] Max Relax Radius: include in v0.3 or defer? Prevents blowup in
       low-density areas but adds another parameter.
-- [ ] Mode switch: `Use Count` bool vs enum property. Bool is simpler for
-      agents and works with set_parameter. Enum is cleaner in the Blender UI.
-      Decision: start with bool, revisit if UX is poor.

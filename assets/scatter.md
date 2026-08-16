@@ -3,89 +3,133 @@ asset: Scatter on Surface
 file: scatter.blend
 node_group: Scatter on Surface
 category: distribution
-version: 0.1
+version: 0.2
 blender: "5.2"
 ---
 
 # Scatter on Surface
 
-Distributes instances from a collection across a mesh surface using Poisson disk sampling, with per-point density control, random scale variation, and automatic normal alignment.
+Distributes points across a mesh surface with per-element density control, exact
+count mode, and well-known attribute output. Outputs a point cloud — instancing
+is downstream.
 
 ## When to use
 
-- Scatter vegetation, rocks, debris, or any repeating element across terrain or surfaces
-- Populate a surface with varied instances for synthetic data generation
-- Any scenario where you need controllable, sweepable instance distribution
+- Scatter points for vegetation, rocks, debris, or any repeating element
+- Feed the output into Instance on Points (separate asset or user-wired)
+- Drive spatial distribution with a painted/computed density attribute
 
 Do NOT use when:
-- You need precise manual placement (use direct object placement instead)
-- Instance orientation needs to follow a custom vector field rather than surface normals (extend this asset or build a custom graph)
-- You need instances distributed in a volume rather than on a surface (use the SDF scatter asset)
+- You need precise manual placement
+- You need volume-based distribution (use a volume scatter asset)
 
 ## Design intent
 
-Poisson over Random distribution because even spacing with a minimum distance constraint produces more natural-looking scatter, which matters for photorealistic synthetic data. Random distribution clusters and leaves gaps that read as artificial under rendering.
+The scatter outputs a **point cloud with well-known attributes**, not instances.
+Instancing is a separate concern. This follows the Houdini Scatter SOP model —
+scatter produces points, Copy to Points / Instance is downstream.
 
-The density is controlled by two parameters working together: Density sets the ceiling, Density Factor multiplies it per-point. This separation lets the agent (or user) paint or compute a spatial mask without touching the global density — critical for workflows like "dense grass on flat areas, sparse on slopes" where the mask is derived from surface properties.
+**Attribute-centric:** The scatter communicates through named attributes, not
+socket wiring. It reads `density` by name from upstream. It writes `pscale`,
+`orient`, `N`, `id` on output points. Downstream assets and Instance on Points
+read these attributes automatically.
 
-Scale randomization uses a single float mapped to uniform XYZ so instances scale proportionally. Non-uniform scale (stretch/squash) is intentionally omitted — it's a separate concern that belongs in a deformation asset or a per-instance modifier.
+**pscale passthrough:** The scatter does NOT overwrite upstream `pscale` by
+default. If present upstream, it flows through untouched. Only when
+`Randomize Scale` is explicitly enabled does the scatter write random values.
+The scatter distributes points — it doesn't redefine their scale.
 
-Pick Instance is enabled with a random index so the system automatically varies which collection child gets placed at each point. The agent doesn't need to manage instance selection.
+**Count mode:** Exact point count via oversample-and-trim. Computes a density
+from `count / surface_area × 1.1`, scatters with RANDOM, then deletes points
+with index >= target count.
+
+## Read attributes
+
+| Attribute | String parameter | Default name | Fallback |
+|-----------|-----------------|--------------|----------|
+| density weight | Density Attribute | `"density"` | 1.0 (uniform) |
+| scale | Scale Attribute | `"pscale"` | 1.0 |
+
+## Write attributes
+
+| Attribute | Type | Domain | Source |
+|-----------|------|--------|--------|
+| `pscale` | FLOAT | POINT | Passthrough (or 1.0). Random when Randomize Scale = true. |
+| `orient` | QUATERNION | POINT | Rotation from Distribute Points (normal alignment) |
+| `N` | FLOAT_VECTOR | POINT | Surface normal at scatter point |
+| `id` | INT | POINT | Sequential index per point |
 
 ## Parameters
 
 | Name | Identifier | Type | Default | Range | Purpose |
 |---|---|---|---|---|---|
-| Geometry | Socket_0 | Geometry | (mesh) | — | Surface to scatter on. Automatically receives the modifier object's mesh. |
-| Collection | Socket_1 | Collection | — | — | Collection of objects to instance. Each child is a candidate; the system picks randomly per point. |
-| Density | Socket_2 | Float | 10.0 | 0.1–10000 | Maximum point density (points per unit area). Higher = more instances. |
-| Density Factor | Socket_3 | Float | 1.0 | 0–1 | Per-point density multiplier. Set to a constant for uniform density, or toggle to attribute mode and specify a named attribute for spatial masking. |
-| Scale Min | Socket_4 | Float | 0.8 | 0.01–10 | Minimum uniform scale factor per instance. |
-| Scale Max | Socket_5 | Float | 1.2 | 0.01–10 | Maximum uniform scale factor per instance. |
-| Seed | Socket_6 | Int | 0 | — | Controls point distribution randomness. Change to get a different arrangement. |
-| Distance Min | Socket_8 | Float | 0.2 | 0.01–10 | Minimum distance between scattered points (Poisson disk radius). Increase for sparser, more even spacing. Must be > 0. |
+| Geometry | Socket_0 | Geometry | (mesh) | — | Surface to scatter on |
+| Density Attribute | Socket_2 | String | "density" | — | Float attribute name modulating density. Empty = uniform. |
+| Density Max | Socket_3 | Float | 10.0 | 0.1–10000 | Ceiling on point density (pts/unit²) |
+| Seed | Socket_4 | Int | 0 | — | Distribution randomness |
+| Count | Socket_5 | Int | 100 | 1–1000000 | Target count (when Use Count = true) |
+| Use Count | Socket_7 | Bool | false | — | true = count mode, false = density mode |
+| Scale Attribute | Socket_8 | String | "pscale" | — | Attribute name for per-point scale |
+| Scale Min | Socket_9 | Float | 0.8 | 0.01–10 | Min random scale (Randomize Scale only) |
+| Scale Max | Socket_10 | Float | 1.2 | 0.01–10 | Max random scale (Randomize Scale only) |
+| Randomize Scale | Socket_11 | Bool | false | — | true = overwrite scale attr with random |
+| Relax Iterations | Socket_13 | Int | 0 | 0–20 | Reserved (not wired in v0.2) |
+| Scale Radii By | Socket_14 | Float | 1.0 | 0–2 | Reserved (not wired in v0.2) |
 
 ## Internal structure
 
 ```
 Group Input
-  ├─ Geometry ──→ Distribute Points on Faces (Mesh)
-  ├─ Density ──→ Distribute Points on Faces (Density Max)
-  ├─ Density Factor ──→ Distribute Points on Faces (Density Factor)
-  ├─ Distance Min ──→ Distribute Points on Faces (Distance Min)
-  ├─ Seed ──→ Distribute Points on Faces (Seed)
-  ├─ Collection ──→ Collection Info (Separate Children, Reset Children)
-  ├─ Scale Min ──→ Random Value [float] (Min)
-  └─ Scale Max ──→ Random Value [float] (Max)
-
-Distribute Points on Faces (Poisson mode)
-  ├─ Points ──→ Instance on Points (Points)
-  └─ Rotation ──→ Instance on Points (Rotation)
-
-Collection Info ──→ Instance on Points (Instance, Pick Instance = true)
-Random Value [float] ──→ Combine XYZ (uniform) ──→ Instance on Points (Scale)
-Random Value [int, seed=2] ──→ Instance on Points (Instance Index)
-
-Instance on Points ──→ Group Output (Geometry)
+  ├─ Geometry ──→ Distribute Points on Faces (RANDOM, Mesh)
+  │              ├─ also → Area Sum (for count mode)
+  │
+  ├─ Density Attribute ──→ Named Attribute (density lookup)
+  │   └─ Exists? → Switch: attr value / 1.0
+  │       └─ × Density Max ──→ Mode Switch (density path)
+  │
+  ├─ Count ──→ Count / Area Sum × 1.1 ──→ Mode Switch (count path)
+  ├─ Use Count ──→ Mode Switch selector
+  │
+  │  Mode Switch output ──→ Distribute.Density
+  │
+  │  Distribute.Points ──→ [if Use Count]: Delete (Index >= Count)
+  │                    ──→ Trim Gate (Use Count selects raw vs trimmed)
+  │
+  │  Trim Gate ──→ Store pscale (passthrough or random)
+  │            ──→ Store orient (from Distribute.Rotation)
+  │            ──→ Store N (from Distribute.Normal)
+  │            ──→ Store id (from Index)
+  │            ──→ Group Output
+  │
+  ├─ Scale Attribute ──→ pscale lookup + Store name
+  ├─ Randomize Scale ──→ gates random vs passthrough
+  ├─ Scale Min/Max ──→ Random Value (when randomize = true)
+  └─ Seed ──→ Distribute.Seed
 ```
 
 ## Composes with
 
-- **Noise Displacement** — apply displacement first, then scatter on the deformed surface for vegetation on rough terrain
-- **Attribute painting / weight maps** — compute or paint a float attribute, feed it into Density Factor for spatial control
-- **Material assignment** — assign materials to the collection objects before scattering; they carry through to instances
+- **Instance on Points** — wire output geometry to Points input. pscale drives
+  Scale (via Named Attribute → Combine XYZ), orient drives Rotation.
+- **Density producers** — any upstream node that writes a `density` float
+  attribute modulates the scatter distribution automatically.
+- **Upstream pscale** — store `pscale` on the input mesh before scattering.
+  The scatter reads it for future relaxation radii and passes it through to
+  instancing. No re-wiring needed.
 
 ## Limitations
 
-- Normal alignment only (Z-up instances oriented to face normal). No custom orientation vector or alignment axis control.
-- Uniform scale only. No per-axis scale variation.
-- No rotation randomization around the normal axis — instances all face the same way relative to the surface tangent.
-- The random index for Pick Instance uses a fixed seed offset (seed=2), independent of the main Seed parameter. Changing Seed re-distributes points but doesn't change which instance appears at each point.
+- No relaxation in v0.2. Relax Iterations and Scale Radii By are interface-ready
+  but not wired. GN lacks native self-neighbor exclusion for point clouds.
+  Candidate approaches for v0.3: even/odd index split, numpy-based relaxation.
+- No instancing — outputs raw point cloud. Wire Instance on Points downstream.
+- Normal alignment only (Z-up oriented to face normal). No custom axis control.
+- RANDOM distribution only. No Poisson mode.
 
 ## Sweep guidance
 
-For synthetic data variation, the most impactful parameters to sweep are:
+For synthetic data variation, sweep:
 - **Seed** — different point arrangements per image
-- **Density** — sparse to dense coverage
-- **Scale Min / Scale Max** — size variation range
-- **Density Factor** (via attribute) — spatial distribution patterns
+- **Density Max** or **Count** — sparse to dense coverage
+- **Randomize Scale + Scale Min/Max** — size variation (opt-in)
+- **Density Attribute** (via upstream) — spatial distribution patterns
