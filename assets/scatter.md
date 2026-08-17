@@ -1,8 +1,9 @@
 ---
-asset: Scatter on Surface
+asset: SynthGen.Scatter on Surface
 file: scatter.blend
-node_group: Scatter on Surface
+node_group: SynthGen.Scatter on Surface
 category: distribution
+catalog_path: SynthGen/Distribution
 version: 0.2
 blender: "5.2"
 ---
@@ -96,12 +97,12 @@ Group Input
   │  Distribute.Points ──→ [if Use Count]: Delete (Index >= Count)
   │                    ──→ Trim Gate (Use Count selects raw vs trimmed)
   │
-  │  Trim Gate ──→ Repeat Zone (Relax Iterations passes):
-  │                  ┌ Density-aware radius:
-  │                  │  Named Attribute (density) → Switch (exists? : 1.0)
-  │                  │  → Sample Nearest Surface (from input mesh)
-  │                  │  → max(ε) → √ → 1/√ → min(Max Relax Radius)
-  │                  │  → × Scale Radii By → × 0.05 damping → push_amount
+  │  Trim Gate ──→ Density-aware radius computation:
+  │                  Named Attribute (density) → Switch (exists? : 1.0)
+  │                  → × Density Max → max(ε) → √ → 1/√ → min(Max Relax Radius)
+  │                  → Store ".relax_radius" on point cloud
+  │               ──→ Repeat Zone (Relax Iterations passes):
+  │                  ├ Read ".relax_radius" → × Scale Radii By → × 0.05 → push_amount
   │                  ├ Nearest neighbor:
   │                  │  Index of Nearest (self-excluded) → Sample Index
   │                  │  → my_pos - neighbor_pos → normalize → × push_amount
@@ -122,22 +123,32 @@ Group Input
 
 ## Composes with
 
-- **Instance on Points** — wire output geometry to Points input. pscale drives
-  Scale (via Named Attribute → Combine XYZ), orient drives Rotation.
-- **Density producers** — any upstream node that writes a `density` float
+- **SynthGen.Instance on Points** (downstream) — reads `pscale` and `orient`
+  directly from well-known attributes. No explicit socket wiring beyond the
+  geometry stream. Inside a SynthGen container, wire Scatter output → Instance
+  input.
+- **Density producers** (upstream) — any node that writes a `density` float
   attribute modulates the scatter distribution automatically.
 - **Upstream pscale** — store `pscale` on the input mesh before scattering.
   The scatter reads it for future relaxation radii and passes it through to
   instancing. No re-wiring needed.
+- **SynthGen container** — designed to work as a sub-group node. Parameters
+  stay at this group level, not bubbled to the parent container.
 
 ## Limitations
 
-- Relaxation uses density-aware radii (1/√density, clamped by Max Relax Radius)
-  with `Index of Nearest` (self-excluded) for neighbor finding, push + `Sample
-  Nearest Surface` snap-back inside a Repeat Zone. Pure GN, no Python. At 20
-  iterations on 50 points, uniformity reaches ~0.60 (vs 0.05 unrelaxed).
-  Density-proportional radii preserve density gradients during relaxation —
-  dense areas push less, sparse areas push more (per Houdini Scatter SOP model).
+- Relaxation uses density-aware radii (density × Density Max → 1/√density,
+  clamped by Max Relax Radius) with `Index of Nearest` (self-excluded) for
+  neighbor finding, push + `Sample Nearest Surface` snap-back inside a Repeat
+  Zone. Pure GN, no Python. The density chain reads `density` directly off the
+  point cloud (inherited from the scatter step) rather than resampling the
+  input mesh. Validated on a 109-point, 8×8 density-gradient scatter
+  (Density Max = 50): CV drops from 0.551 (unrelaxed) to 0.204 at 50
+  iterations (blue-noise convergence), while the density gradient itself is
+  preserved — Q4/Q1 density-quartile ratio stays at 2.41 at 50 iterations
+  (down from 5.11 unrelaxed, ~47% preservation), roughly 2× better than the
+  ~26% preservation seen with uniform (non-density-aware) relax radii. Z
+  deviation stays 0.000 throughout — perfect surface snap-back.
 - No instancing — outputs raw point cloud. Wire Instance on Points downstream.
 - Normal alignment only (Z-up oriented to face normal). No custom axis control.
 - RANDOM distribution only. No Poisson mode.
