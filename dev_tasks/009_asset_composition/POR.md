@@ -83,7 +83,7 @@ ng["synthgen_version"] = 1
 ng.use_fake_user = True
 
 # On each sub-group node inside the container:
-node["synthgen_asset"] = "Scatter on Surface"  # asset identity
+node["synthgen_asset"] = "SynthGen.Scatter on Surface"  # asset identity
 # Order is derived from tracing the geometry DAG — not stored.
 ```
 
@@ -253,115 +253,269 @@ in Blender's native asset catalog, discoverable through the Asset Browser.
 
 **Goal:** Build the `SynthGen.Container` template asset (the bootstrap preset
 with input hooks) and the Python module providing container lifecycle
-operations. Importable with and without Blender (`import bpy` guarded).
-Usable by both the addon and MCP tools.
+operations. Importable without Blender (`import bpy` guarded). Usable by
+both the addon and MCP tools.
 
-**Container template (`SynthGen.Container`):**
+**Files to create/modify:**
 
-A node group registered in the catalog under `SynthGen/Container`. Pre-wired
-with:
-- Object input socket ("Surface") → Object Info → Geometry
-- Geometry Output
-- Seed (Int) input
-- Infrastructure for adding more Object/Collection inputs dynamically
+| File | Action |
+|------|--------|
+| `assets/blender_assets.cats.txt` | Modify — add Container catalog UUID |
+| `scripts/build_container_template.py` | Create — headless script to build template |
+| `assets/container.blend` | Created by script |
+| `assets/container.md` | Create — asset manifest |
+| `scripts/mark_assets.py` | Modify — add container to ASSET_DEFINITIONS |
+| `src/synthgen/containers.py` | Create — core lifecycle module |
+| `tests/test_containers.py` | Create — offline unit tests |
+| `scripts/test_containers_e2e.py` | Create — headless integration test |
 
-The `create()` function instantiates this template, tags the instance, and
-applies it as a GN modifier. The template is the asset; the instance is
-working state. Built via a headless script (extending `mark_assets.py` or
-a new `build_container_template.py`) and registered in `scatter.blend` or
-a dedicated `container.blend`.
+---
 
-**Location:** `src/synthgen/containers.py`
+#### 1a. Container template (`SynthGen.Container`)
 
-**API:**
+A node group registered in the catalog under `SynthGen/Container`. This is a
+bootstrap preset — pre-wired infrastructure so nobody has to hand-build the
+Object Info → Geometry routing each time.
+
+**Template structure:**
+
+```
+Group Input                          Group Output
+  ├─ Surface (Object) ──→ Object Info ──→ Geometry (out)
+  └─ Seed (Int, default 0)
+```
+
+**Build script:** `scripts/build_container_template.py` (follows the headless
+pattern from `scripts/build_test_scene.py`).
+
+**Blender API recipe** (reference: `build_test_scene.py` lines 182–249):
+
+```python
+ng = bpy.data.node_groups.new("SynthGen.Container", "GeometryNodeTree")
+
+# Interface sockets
+ng.interface.new_socket(name="Geometry", in_out="OUTPUT",
+                        socket_type="NodeSocketGeometry")
+ng.interface.new_socket(name="Surface", in_out="INPUT",
+                        socket_type="NodeSocketObject")
+ng.interface.new_socket(name="Seed", in_out="INPUT",
+                        socket_type="NodeSocketInt")
+
+# Nodes
+group_in  = ng.nodes.new("NodeGroupInput");  group_in.location = (-400, 0)
+group_out = ng.nodes.new("NodeGroupOutput"); group_out.location = (400, 0)
+obj_info  = ng.nodes.new("GeometryNodeObjectInfo"); obj_info.location = (0, 0)
+
+# Links
+ng.links.new(group_in.outputs["Surface"], obj_info.inputs["Object"])
+ng.links.new(obj_info.outputs["Geometry"], group_out.inputs["Geometry"])
+
+ng.use_fake_user = True
+```
+
+Output: `assets/container.blend`. Then run `mark_assets.py` to asset-mark it
+(add container to ASSET_DEFINITIONS with the same UUID from the catalog file).
+
+**`mark_assets.py` changes:** Add `CATALOG_CONT_UUID` constant, add entry to
+`ASSET_DEFINITIONS` (old_name == new_name, no rename), add catalog line to
+`write_catalog()`. The existing scan-all-blends logic picks up
+`container.blend` automatically.
+
+**Manifest:** `assets/container.md` with front matter matching the pattern
+from `scatter.md` (asset name, file, node_group, category, catalog_path,
+version, blender).
+
+---
+
+#### 1b. `src/synthgen/containers.py` module
+
+**Import guard:** `try: import bpy` / `except ImportError: bpy = None`. All
+public functions raise `RuntimeError` if called without bpy. All return
+JSON-serializable dicts.
+
+**Chain topology:** The container has NO Geometry input socket — geometry
+enters through Object Info. The chain is:
+
+```
+Object Info.Geometry → Asset_1.Geometry → Asset_2.Geometry → ... → Group Output.Geometry
+```
+
+`_trace_chain()` starts at the Object Info node (find by
+`bl_idname == "GeometryNodeObjectInfo"`), follows geometry output links to
+Group Output, and collects only nodes tagged with `synthgen_asset`.
+
+**Finding geometry sockets:** Use `_find_geo_socket(sockets)` — iterate a
+node's inputs or outputs, return the first socket with `type == "GEOMETRY"`.
+
+**Public API:**
 
 ```python
 def create(object_name: str, name: str = "SynthGen",
            inputs: dict[str, str] | None = None) -> dict:
-    """Create an empty container on an object.
-    Idempotent — returns existing container if one is already present.
-    Tags node group with synthgen_type, applies as GN modifier.
-    
-    The container is geometry-agnostic — it exposes Object reference
-    inputs (hooks) that source geometry via Object Info nodes. The
-    host object need not be a mesh; an Empty works as a controller.
-    
-    `inputs` maps hook names to target object names, e.g.:
-        {"Surface": "Ground", "Collision": "Walls"}
-    Each creates an Object socket on the container's Group Input
-    wired through Object Info → Geometry. If None, creates a single
-    default "Surface" hook.
-    
-    Returns: {"container": name, "object": object_name,
-              "modifier": mod_name, "inputs": [...hook names...]}
-    """
+    """Create container on an object.
+    Idempotent — returns existing if present.
 
-def list_containers() -> list[dict]:
-    """Scan bpy.data.node_groups for synthgen_type == 'container'.
-    Returns: [{"name": ..., "object": ..., "assets": [...]}]
+    1. Check obj.modifiers for existing synthgen_type container → return it
+    2. Copy SynthGen.Container template (or build programmatically if absent)
+    3. Tag: ng["synthgen_type"] = "container", ng["synthgen_version"] = 1,
+       ng.use_fake_user = True
+    4. Apply as GN modifier: obj.modifiers.new(name, "NODES")
+    5. Set input hooks: for each entry in `inputs`, set the Object socket
+       default via Blender 5.x bracket access on the modifier
+
+    Returns: {"container": ng.name, "object": object_name,
+              "modifier": mod.name, "inputs": [...hook names...]}
     """
 
 def add_asset(container: str, asset_name: str,
               after: str | None = None) -> dict:
-    """Load asset from any registered Blender Asset Library if not already
-    in bpy.data.node_groups. Searches ALL libraries — SynthGen's custom
-    assets and Blender's built-in GN library. SynthGen library takes
-    precedence on name collision.
-    Inserts into geometry chain after `after` (or appends to end).
-    Tags node with synthgen_asset.
-    Returns: {"node": node_name, "position": int, "inputs": [...]}
+    """Add asset to container's geometry chain.
+
+    1. Find container node group (validate synthgen_type tag)
+    2. Find asset node group in bpy.data.node_groups (error if absent —
+       asset library loading deferred to Stage 2 MCP wrappers)
+    3. Create GeometryNodeGroup node, set node.node_tree = asset_ng
+    4. Tag: node["synthgen_asset"] = asset_name
+    5. Splice into chain:
+       - after=None → append before Group Output
+       - after=<name> → insert after named node
+    6. Position node for readability (offset X from after_node)
+
+    Returns: {"node": node.name, "position": idx, "inputs": [...]}
     """
 
 def remove_asset(container: str, node_name: str) -> dict:
-    """Remove sub-group node, re-wire geometry around it.
-    Returns: {"removed": node_name, "chain": [...remaining...]}
+    """Remove asset, re-wire geometry around it.
+
+    1. _splice_out() the node
+    2. ng.nodes.remove(node)
+
+    Returns: {"removed": node_name, "chain": [...remaining names...]}
     """
 
 def list_assets(container: str) -> list[dict]:
-    """Trace geometry DAG from Group Input to Group Output.
-    Returns ordered list of assets with node names, types, positions.
+    """Trace geometry chain, return ordered assets.
+
+    Returns: [{"node": name, "asset": synthgen_asset, "position": i}, ...]
+    """
+
+def list_containers() -> list[dict]:
+    """Scan bpy.data.node_groups for synthgen_type == 'container'.
+    For each, find the object whose modifier uses it.
+
+    Returns: [{"name": ..., "object": ..., "assets": [...]}]
     """
 
 def find_container(asset_node_group: str) -> str | None:
-    """Reverse lookup: which container uses this asset node group?
-    Scans all containers for sub-group nodes referencing the given tree.
+    """Reverse lookup: which container has a sub-group referencing this tree?
     """
 
 def reorder_asset(container: str, node_name: str,
                   after: str | None = None) -> dict:
-    """Move asset to a new position in the chain. Re-wires geometry.
-    after=None → move to first position (right after Group Input).
+    """Move asset in chain. _splice_out() then _splice_after().
+    after=None → move to first position (right after Object Info).
+
+    Returns: {"node": node_name, "chain": [...new order...]}
     """
 ```
 
-**Linear chain internals (Stage 1 scope):**
+**Internal helpers:**
 
 ```python
+def _find_geo_socket(sockets):
+    """Return the first GEOMETRY socket from a node's inputs or outputs."""
+
 def _trace_chain(container_ng) -> list[Node]:
-    """Follow geometry links from Group Input to Group Output.
-    Returns nodes in evaluation order, skipping Group Input/Output."""
+    """Follow geometry links from Object Info to Group Output.
+    Returns asset nodes (those with synthgen_asset tag) in eval order.
+    Skips infrastructure nodes (Object Info, Group Input, Group Output)."""
 
 def _splice_after(container_ng, new_node, after_node):
-    """Insert new_node into the geometry chain after after_node.
-    Breaks the existing link, creates two new links."""
+    """Insert new_node after after_node in the geometry chain.
+    1. Find after_node's geo output link target
+    2. Remove that link
+    3. Link after_node.geo_out → new_node.geo_in
+    4. Link new_node.geo_out → original target"""
 
 def _splice_out(container_ng, node):
-    """Remove node from the geometry chain.
-    Re-wires upstream output → downstream input."""
+    """Remove node from geometry chain, bridge the gap.
+    1. Find node's upstream geo source socket
+    2. Find node's downstream geo target socket
+    3. Remove both links
+    4. Link upstream source → downstream target"""
 ```
 
-**Tests:** Offline unit tests using `unittest.mock` for bpy, verifying the
-splice logic, tagging, and idempotency.
+---
+
+#### 1c. Tests
+
+**Offline tests:** `tests/test_containers.py` using `unittest.mock`.
+
+Mock `bpy.data.node_groups` and `bpy.data.objects` as dict-like objects. Build
+mock node groups with `.nodes`, `.links`, `.interface` collections and mock
+nodes with `.inputs`, `.outputs`, custom properties via `__getitem__`.
+Reference pattern: `tests/test_stage4_tools.py` lines 8–28.
+
+**Test cases (10):**
+
+1. `create()` produces tagged container with correct custom properties
+2. `create()` is idempotent — returns existing container
+3. `add_asset()` splices into empty chain (Object Info → Asset → Group Out)
+4. `add_asset()` with `after` inserts at correct position
+5. `remove_asset()` re-wires geometry around removed node
+6. `list_assets()` returns correct order after multiple adds
+7. `find_container()` reverse lookup finds correct container
+8. `list_containers()` discovers only tagged containers
+9. Same asset type can be added twice (`.001` suffix)
+10. `reorder_asset()` moves node to new position
+
+**Headless e2e test:** `scripts/test_containers_e2e.py` — runs in Blender
+headless, exercises the full flow:
+
+1. Create Empty ("Controller") and Plane ("Ground")
+2. Load assets from `scatter.blend` via `bpy.data.libraries.load()`
+3. `create("Controller", inputs={"Surface": "Ground"})`
+4. Verify: container tagged, modifier applied, Object Info wired
+5. `add_asset(container, "SynthGen.Scatter on Surface")`
+6. `add_asset(container, "SynthGen.Instance on Points")`
+7. `list_assets()` → verify order: Scatter, Instance
+8. `remove_asset(container, scatter_node)` → verify re-wiring
+9. `list_containers()` → verify discovery
+10. `create("Controller")` again → verify idempotency
+
+---
+
+#### 1d. Execution order
+
+```
+Step 1: Generate Container UUID, update blender_assets.cats.txt
+Step 2: Write + run build_container_template.py (creates container.blend)
+Step 3: Update mark_assets.py, run (marks container as asset)
+Step 4: Write assets/container.md manifest
+Step 5: Write src/synthgen/containers.py
+Step 6: Write + run tests/test_containers.py (pytest)
+Step 7: Write + run scripts/test_containers_e2e.py (headless Blender)
+Step 8: Run full pytest suite (regression check)
+```
+
+Steps 1→2→3 are sequential (each depends on prior). Steps 4 and 5 can start
+after Step 1. Steps 6–7 depend on Step 5. Step 8 is the final gate.
 
 **Verify:**
-- [ ] `create()` produces tagged, empty container with Geometry in/out
-- [ ] `add_asset()` loads node group, inserts into chain, tags node
+- [ ] `create()` produces tagged container with Object Info wiring
+- [ ] `create()` is idempotent on an object with existing container
+- [ ] `add_asset()` loads node group, splices into chain, tags node
+- [ ] `add_asset()` with `after` parameter inserts at correct position
 - [ ] `remove_asset()` re-wires around removed node
 - [ ] `list_assets()` returns correct order
 - [ ] `find_container()` reverse lookup works
 - [ ] `list_containers()` discovers tagged containers
 - [ ] Same asset type can be added multiple times
-- [ ] `create()` is idempotent on an object that already has a container
+- [ ] `reorder_asset()` moves node in chain
+- [ ] Container template is asset-marked in catalog
+- [ ] Offline pytest passes (10 tests)
+- [ ] Headless e2e test passes (10 checks)
+- [ ] Full pytest suite — no regressions
 
 ### Stage 2: MCP tool wrappers
 
@@ -500,11 +654,12 @@ agent can, through Blender's interface.
 
 ## Definition of done
 
-### Stage 0
-- [ ] `blender_assets.cats.txt` committed in `assets/`
-- [ ] `scripts/mark_assets.py` committed and tested
-- [ ] Scatter on Surface and Instance on Points marked as assets in `scatter.blend`
-- [ ] Asset Browser discovery verified manually
+### Stage 0 ✓
+- [x] `blender_assets.cats.txt` committed in `assets/`
+- [x] `scripts/mark_assets.py` committed and tested (idempotent, self-verifying)
+- [x] `SynthGen.Scatter on Surface` and `SynthGen.Instance on Points` marked
+      as assets in `scatter.blend` (namespaced, catalog-registered)
+- [x] Asset Browser discovery verified manually (drag-and-drop works)
 
 ### Stage 1
 - [ ] `src/synthgen/containers.py` with full API
