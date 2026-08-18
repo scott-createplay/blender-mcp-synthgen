@@ -34,6 +34,26 @@ def _parse_args():
     return parser.parse_args(argv)
 
 
+def _keep_groups(root_tree):
+    """Return the set of node-group names reachable from *root_tree* (inclusive).
+
+    Pure graph-walk over ``.nodes`` / ``.type`` / ``.node_tree`` — no ``bpy``
+    calls — so it can be unit tested offline without a live Blender session.
+    Cycle-safe: a group already in the result is never re-walked.
+    """
+    keep_groups = {root_tree.name}
+
+    def _collect_subgroups(ng):
+        for node in ng.nodes:
+            if node.type == "GROUP" and node.node_tree:
+                if node.node_tree.name not in keep_groups:
+                    keep_groups.add(node.node_tree.name)
+                    _collect_subgroups(node.node_tree)
+
+    _collect_subgroups(root_tree)
+    return keep_groups
+
+
 def main():
     args = _parse_args()
 
@@ -47,20 +67,9 @@ def main():
         tree.nodes.remove(v)
         print(f"[export] Stripped Viewer node: {v.name}")
 
-    keep_groups = set()
-    def _collect_subgroups(ng):
-        for node in ng.nodes:
-            if node.type == "GROUP" and node.node_tree:
-                if node.node_tree.name not in keep_groups:
-                    keep_groups.add(node.node_tree.name)
-                    _collect_subgroups(node.node_tree)
-    keep_groups.add(tree.name)
-    _collect_subgroups(tree)
+    keep_groups = _keep_groups(tree)
 
-    for ng in list(bpy.data.node_groups):
-        if ng.name not in keep_groups:
-            bpy.data.node_groups.remove(ng)
-
+    # Remove scene data first so node groups lose their users
     for obj in list(bpy.data.objects):
         bpy.data.objects.remove(obj, do_unlink=True)
     for mesh in list(bpy.data.meshes):
@@ -75,8 +84,19 @@ def main():
         bpy.data.collections.remove(col)
     for img in list(bpy.data.images):
         bpy.data.images.remove(img)
+    for world in list(bpy.data.worlds):
+        bpy.data.worlds.remove(world, do_unlink=True)
+    for txt in list(bpy.data.texts):
+        bpy.data.texts.remove(txt, do_unlink=True)
 
-    bpy.ops.outliner.orphans_purge(do_recursive=True)
+    # Now remove unwanted node groups (do_unlink=True to force)
+    for ng in list(bpy.data.node_groups):
+        if ng.name not in keep_groups:
+            bpy.data.node_groups.remove(ng, do_unlink=True)
+
+    # Final purge for anything we missed
+    for _ in range(3):
+        bpy.ops.outliner.orphans_purge(do_recursive=True)
 
     tree["synthgen_asset"] = tree.name
     tree.asset_mark()

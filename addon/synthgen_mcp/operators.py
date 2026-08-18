@@ -7,6 +7,7 @@ Node Editor operators: auto_layout, tag_asset, save_asset.
 
 import os
 import subprocess
+import tempfile
 
 import bpy
 
@@ -310,6 +311,11 @@ class SYNTHGEN_OT_save_asset(bpy.types.Operator):
     bl_description = "Export the tagged node group as a SynthGen asset"
     bl_options = {'REGISTER', 'UNDO'}
 
+    asset_name: bpy.props.StringProperty(
+        name="Name",
+        description="Asset name (will be prefixed with 'SynthGen.' if missing)",
+    )
+
     category: bpy.props.EnumProperty(
         name="Category",
         items=[
@@ -335,12 +341,13 @@ class SYNTHGEN_OT_save_asset(bpy.types.Operator):
         return bool(tree.get("synthgen_asset"))
 
     def invoke(self, context, event):
+        tree = context.space_data.edit_tree
+        self.asset_name = tree.name
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
         layout = self.layout
-        tree = context.space_data.edit_tree
-        layout.label(text=f"Asset: {tree.name}")
+        layout.prop(self, "asset_name")
         layout.prop(self, "category")
 
     def execute(self, context):
@@ -350,6 +357,18 @@ class SYNTHGEN_OT_save_asset(bpy.types.Operator):
         )
 
         tree = context.space_data.edit_tree
+
+        # Apply user's chosen name
+        name = self.asset_name.strip()
+        if not name:
+            self.report({'ERROR'}, "Asset name cannot be empty")
+            return {'CANCELLED'}
+        if not name.startswith("SynthGen."):
+            name = f"SynthGen.{name}"
+        if tree.name != name:
+            tree.name = name
+            tree["synthgen_asset"] = name
+
         result = validate(tree)
         for w in result.warnings:
             self.report({'WARNING'}, w)
@@ -358,10 +377,12 @@ class SYNTHGEN_OT_save_asset(bpy.types.Operator):
                 self.report({'ERROR'}, e)
             return {'CANCELLED'}
 
-        # Auto-save so the subprocess can read the current state
-        bpy.ops.wm.save_mainfile()
+        # Save a temp copy so the subprocess can read current state
+        # (works even if the user hasn't saved the file yet)
+        tmp_blend = os.path.join(tempfile.gettempdir(), "_synthgen_export_src.blend")
+        bpy.ops.wm.save_as_mainfile(filepath=tmp_blend, copy=True)
 
-        slug = slug_from_name(tree.name)
+        slug = slug_from_name(name)
         blend_out = os.path.join(_assets_dir, f"{slug}.blend")
         md_out = os.path.join(_assets_dir, f"{slug}.md")
         catalog_path = os.path.join(_assets_dir, "blender_assets.cats.txt")
@@ -369,13 +390,8 @@ class SYNTHGEN_OT_save_asset(bpy.types.Operator):
         cat_uuid = ensure_catalog_entry(catalog_path, self.category)
 
         worker = os.path.join(_repo_root, "scripts", "_export_asset_worker.py")
-        source_blend = bpy.data.filepath
-        if not source_blend:
-            self.report({'ERROR'}, "File must be saved before exporting an asset")
-            return {'CANCELLED'}
-
         cmd = [
-            _BLENDER_EXE, "-b", source_blend,
+            _BLENDER_EXE, "-b", tmp_blend,
             "-P", worker, "--",
             "--tree", tree.name,
             "--output", blend_out,
@@ -398,6 +414,11 @@ class SYNTHGEN_OT_save_asset(bpy.types.Operator):
         except subprocess.TimeoutExpired:
             self.report({'ERROR'}, "Export timed out after 60s")
             return {'CANCELLED'}
+        finally:
+            try:
+                os.remove(tmp_blend)
+            except OSError:
+                pass
 
         if not os.path.isfile(md_out):
             manifest = generate_manifest(tree, self.category)
