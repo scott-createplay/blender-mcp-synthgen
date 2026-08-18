@@ -91,7 +91,8 @@ def _setup_paths():
             sys.path.insert(0, _addon_dir)
         schemas_root = os.path.join(_addon_dir, "data", "schemas")
     else:
-        repo_root = os.path.normpath(os.path.join(_addon_dir, "..", ".."))
+        real_addon = os.path.realpath(_addon_dir)
+        repo_root = os.path.normpath(os.path.join(real_addon, "..", ".."))
         src_path = os.path.join(repo_root, "src")
         if src_path not in sys.path:
             sys.path.insert(0, src_path)
@@ -111,7 +112,8 @@ def _teardown_paths():
             sys.path.remove(p)
 
     if not os.path.isdir(bundled_synthgen):
-        repo_root = os.path.normpath(os.path.join(_addon_dir, "..", ".."))
+        real_addon = os.path.realpath(_addon_dir)
+        repo_root = os.path.normpath(os.path.join(real_addon, "..", ".."))
         src_path = os.path.join(repo_root, "src")
         if src_path in sys.path:
             sys.path.remove(src_path)
@@ -293,14 +295,24 @@ def register():
 
     _setup_paths()
 
-    from . import deps
+    from . import deps, executor, server, ui, operators, menus
+
+    import importlib
+    importlib.reload(deps)
+    importlib.reload(executor)
+    importlib.reload(server)
+    importlib.reload(ui)
+    importlib.reload(operators)
+    importlib.reload(menus)
+
     vendor = os.path.join(_addon_dir, "vendor")
     if not deps.deps_installed():
         deps.install_deps(vendor)
         _setup_vendor(vendor)
 
-    from . import ui
     ui.register()
+    operators.register()
+    menus.register()
 
     prefs = bpy.context.preferences.addons.get(__package__)
     if prefs and prefs.preferences.auto_start:
@@ -331,8 +343,10 @@ def unregister():
     stop_watchdog()
     srv.stop()
 
-    from . import ui
+    from . import ui, operators, menus
+    menus.unregister()
     ui.unregister()
+    operators.unregister()
 
     if bpy.app.timers.is_registered(_deferred_start):
         bpy.app.timers.unregister(_deferred_start)
