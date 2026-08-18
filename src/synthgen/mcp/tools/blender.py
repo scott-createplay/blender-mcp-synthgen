@@ -1061,19 +1061,18 @@ def register(mcp: FastMCP, get_transport, get_blender_dir=None, get_blender_vers
 
         code = textwrap.dedent(f"""\
             import bpy, json
+            from synthgen.layout import auto_layout
             tree = {tree_lookup}
             if not tree:
                 print("ERROR: tree not found")
             else:
+                auto_layout(tree)
+                print(json.dumps({{
+                    "tree": tree.name,
+                    "nodes": len(tree.nodes),
+                    "laid_out": True,
+                }}))
         """)
-        code += textwrap.indent(_layout_code("tree"), "    ")
-        code += textwrap.indent(textwrap.dedent("""\
-            print(json.dumps({
-                "tree": tree.name,
-                "nodes": len(tree.nodes),
-                "laid_out": True,
-            }))
-        """), "    ")
         return _run(code, mutates=True)
 
     # --- Layer 2b: Procedural Authoring (Stage 4) ----------------------------

@@ -913,7 +913,7 @@ class TestAutoLayout:
         fns, transport = registered_tools
         fns["layout_node_tree"]("MyTree", tree_context="gn")
         code = transport.execute_python.call_args_list[0][0][0]
-        assert "_al_nodes" in code
+        assert "auto_layout" in code
         assert "laid_out" in code
 
 
